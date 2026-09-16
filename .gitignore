@@ -1,0 +1,29 @@
+# Python-generated files
+__pycache__/
+*.py[cod]
+build/
+dist/
+wheels/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Dataset
+dataset/
+
+# Environment / local configuration
+.env
+.env.*
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/

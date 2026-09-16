@@ -1,0 +1,17 @@
+[project]
+name = "project-2-vehicle-classifier-with-traffic-images"
+version = "0.1.0"
+description = "Vehicle classification from traffic images using deep learning"
+readme = "README.md"
+authors = [
+    { name = "AliReza", email = "arzxii1998@Gmail.com" }
+]
+requires-python = ">=3.11,<3.15"
+dependencies = []
+
+[project.scripts]
+project-2-vehicle-classifier-with-traffic-images = "project_2_vehicle_classifier_with_traffic_images:main"
+
+[build-system]
+requires = ["uv_build>=0.12.15,<0.13.0"]
+build-backend = "uv_build"
