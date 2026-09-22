@@ -1,17 +1,21 @@
 """
-Near-duplicate image detection based on perceptual hashing (pHash).
+Near-duplicate image detection based on perceptual hashing (pHash / aHash /
+dHash / wHash).
 
 Typical workflow (called from a notebook):
 
-    hashed = compute_phashes(image_metadata)
-    report = build_duplicate_report(hashed)
+    hashed = compute_phashes("../dataset/cleaned_V2", hash_method="phash")
+    report = build_duplicate_report(hashed, similarity_threshold=0.9)
 
     display(HTML(table_to_html(report)))   # one table, links + thumbnails
 
-    save_duplicate_report(report)          # the table above, as CSV
-    save_label_corrections(report)         # automatic exclusions, label_corrections format
+    save_duplicate_report(report, "../data/duplicate_pairs_report_V2.csv")
+    save_label_corrections(report, "../data/label_corrections_auto_duplicates_V2.csv")
 
-    compare_images(r"dataset\\raw\\train\\kamyun\\a.jpg", r"dataset\\raw\\test\\kamyun\\b.jpg")
+    compare_images(
+        r"dataset\cleaned_V2\train\kamyun\a.jpg",
+        r"dataset\cleaned_V2\test\kamyun\b.jpg",
+    )
 
 Nothing is deleted or moved on disk. Every decision is written to a table.
 """
@@ -30,6 +34,7 @@ import pandas as pd
 from PIL import Image
 
 DEFAULT_HASH_SIZE = 16  # 16 x 16 = 256-bit hash
+DEFAULT_HASH_METHOD = "phash"
 
 # Every pair at least this similar appears in the report table.
 DEFAULT_SIMILARITY_THRESHOLD = 0.9
@@ -37,12 +42,23 @@ DEFAULT_SIMILARITY_THRESHOLD = 0.9
 # 1.0 means identical hashes, which is transitive, so clusters can never chain.
 DEFAULT_CLUSTER_SIMILARITY = 1.0
 
-# Hash models available in compare_images()
+# Hash models available for compute_phashes() and compare_images().
 HASH_METHODS = {
     "ahash": imagehash.average_hash,
     "phash": imagehash.phash,
     "dhash": imagehash.dhash,
     "whash": imagehash.whash,
+}
+
+DEFAULT_IMAGE_EXTENSIONS = {
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".bmp",
+    ".webp",
+    ".gif",
+    ".tif",
+    ".tiff",
 }
 
 # Lower number = more protected. The keeper of a duplicate cluster is the member
@@ -52,7 +68,8 @@ SPLIT_PRIORITY = {"test": 0, "train": 1, "unclean": 2}
 UNKNOWN_SPLIT_PRIORITY = 99
 
 # This file lives in <project>/src/<package>/, so the project root is two
-# levels above the package folder.
+# levels above the package folder. Used only as a fallback base for
+# project-relative paths passed to compare_images() / _project_relative().
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data"
 DEFAULT_REPORT_PATH = DATA_DIR / "duplicate_pairs_report.csv"
@@ -88,43 +105,95 @@ REPORT_COLUMNS = [
 
 
 # ---------------------------------------------------------------------------
-# 1. Hashing
+# 1. Hashing (now walks a dataset folder directly — no image_metadata input)
 # ---------------------------------------------------------------------------
 
 
-def compute_phashes(
-    image_metadata: pd.DataFrame,
-    hash_size: int = DEFAULT_HASH_SIZE,
-) -> pd.DataFrame:
-    """Return the readable images of `image_metadata` with a new `phash` column.
-
-    The hash is stored as a hex string. Rows are re-indexed 0..n-1 so that the
-    row position can be used as an image id in the later steps.
+def _iter_dataset_images(dataset_dir: Path, image_extensions: set[str]):
     """
+    Yields (split, class_name, filename, full_path) for every image file
+    under dataset_dir, walked in a deterministic (sorted) order:
+    split -> class -> filename. Mirrors the layout used by
+    apply_corrections.py: <dataset_dir>/<split>/<class>/<filename>.
+    """
+    for split_dir in sorted(p for p in dataset_dir.iterdir() if p.is_dir()):
+        split = split_dir.name
+        for class_dir in sorted(p for p in split_dir.iterdir() if p.is_dir()):
+            cls = class_dir.name
+            for file_path in sorted(class_dir.iterdir()):
+                if not file_path.is_file():
+                    continue
+                if file_path.suffix.lower() not in image_extensions:
+                    continue
+                yield split, cls, file_path.name, file_path
+
+
+def compute_phashes(
+    dataset_dir: str | Path,
+    hash_method: str = DEFAULT_HASH_METHOD,
+    hash_size: int = DEFAULT_HASH_SIZE,
+    image_extensions: set[str] | None = None,
+) -> pd.DataFrame:
+    """Walk a dataset folder (split/class/filename layout) and hash every image.
+
+    Parameters
+    ----------
+    dataset_dir : path to the dataset root, e.g. "../dataset/cleaned_V2".
+        Expected layout: <dataset_dir>/<split>/<class>/<filename>.
+    hash_method : one of "ahash", "phash", "dhash", "whash".
+    hash_size : hash grid size (must be a multiple of 4 so the hex-encoded
+        hash fills whole bytes — this matters because build_duplicate_report()
+        unpacks the hex string back into individual bits).
+    image_extensions : file extensions to treat as images. Defaults to the
+        common set (.jpg, .jpeg, .png, .bmp, .webp, .gif, .tif, .tiff).
+
+    Returns
+    -------
+    DataFrame with columns: path, split, class, filename, phash
+    (one row per successfully hashed image; unreadable files are skipped
+    and counted in the printed summary, never raise).
+    """
+    if hash_method not in HASH_METHODS:
+        raise ValueError(
+            f"Unknown hash_method '{hash_method}'. Choose one of: {sorted(HASH_METHODS)}"
+        )
     if hash_size % 4 != 0:
         raise ValueError(
             "hash_size must be a multiple of 4 so the hash fills whole bytes."
         )
 
-    readable = image_metadata[image_metadata["readable"].astype(bool)].reset_index(
-        drop=True
-    )
-    readable = readable.copy()
+    dataset_dir = Path(dataset_dir)
+    if not dataset_dir.is_dir():
+        raise FileNotFoundError(f"dataset directory not found: {dataset_dir}")
 
-    hashes = []
-    for path in readable["path"]:
+    extensions = image_extensions or DEFAULT_IMAGE_EXTENSIONS
+    hash_fn = HASH_METHODS[hash_method]
+
+    rows = []
+    failed = 0
+    for split, cls, filename, path in _iter_dataset_images(dataset_dir, extensions):
         try:
             with Image.open(path) as img:
-                hashes.append(str(imagehash.phash(img, hash_size=hash_size)))
+                digest = str(hash_fn(img, hash_size=hash_size))
         except Exception:
-            hashes.append(None)
+            failed += 1
+            continue
+        rows.append(
+            {
+                "path": str(path),
+                "split": split,
+                "class": cls,
+                "filename": filename,
+                "phash": digest,
+            }
+        )
 
-    readable["phash"] = hashes
+    hashed = pd.DataFrame(rows, columns=["path", "split", "class", "filename", "phash"])
 
-    failed = readable["phash"].isna().sum()
-    hashed = readable.dropna(subset=["phash"]).reset_index(drop=True)
-
-    print(f"Hashed images: {len(hashed)}  |  Failed to hash: {failed}")
+    print(
+        f"Scanned: {dataset_dir}  |  hash method: {hash_method} ({hash_size}x{hash_size})  |  "
+        f"Hashed images: {len(hashed)}  |  Failed to hash: {failed}"
+    )
     return hashed
 
 
@@ -283,6 +352,8 @@ def build_duplicate_report(
 
     Parameters
     ----------
+    hashed : the DataFrame returned by compute_phashes() — columns
+        path, split, class, filename, phash.
     similarity_threshold : pairs at least this similar are listed in the table.
     cluster_similarity : only pairs at least this similar can put images into the
         same cluster (default 1.0 = identical hashes). Must be >= similarity_threshold.
@@ -397,21 +468,34 @@ def _print_summary(clusters: dict[int, list[int]], report: pd.DataFrame) -> None
 
 
 def _resolve_project_path(path_value) -> Path:
-    """Turn a project-relative path (with \\ or /) into a full path."""
+    """Turn a project-relative path (with \\ or /) into a full path.
+
+    Absolute paths are returned unchanged. Relative paths are resolved
+    against the current working directory first (so "../dataset/..." paths
+    typed from a notebook in notebooks/ work as-is); only if that does not
+    exist do we fall back to resolving against PROJECT_ROOT.
+    """
     path = Path(str(path_value).replace("\\", "/"))
-    return path if path.is_absolute() else PROJECT_ROOT / path
+    if path.is_absolute():
+        return path
+    cwd_relative = Path.cwd() / path
+    if cwd_relative.exists():
+        return cwd_relative
+    return PROJECT_ROOT / path
 
 
 def compare_images(
     path_a: str | Path,
     path_b: str | Path,
-    hash_method: str = "phash",
+    hash_method: str = DEFAULT_HASH_METHOD,
     hash_size: int = DEFAULT_HASH_SIZE,
 ) -> dict:
     """Compare two images with one hash model and return the similarity.
 
-    Paths are relative to the project root, for example
-    r"dataset\\raw\\train\\kamyun\\196530974.jpg" (use a raw string or forward slashes).
+    Paths may be given relative to the current working directory (typical
+    from a notebook, e.g. "../dataset/cleaned_V2/train/kamyun/a.jpg") or
+    relative to the project root (e.g. r"dataset\\cleaned_V2\\train\\kamyun\\a.jpg").
+    Use a raw string or forward slashes on Windows.
 
     hash_method : one of "ahash", "phash", "dhash", "whash".
     """
@@ -510,6 +594,24 @@ def _project_relative(path_value) -> str:
         return Path(path_value).as_posix()
 
 
+def _non_colliding_path(output_path: Path) -> Path:
+    """
+    If output_path already exists, append _1, _2, ... before the extension
+    until a free name is found, so a save call never overwrites a previous
+    report. E.g. duplicate_pairs_report.csv -> duplicate_pairs_report_1.csv.
+    """
+    if not output_path.exists():
+        return output_path
+
+    stem, suffix = output_path.stem, output_path.suffix
+    counter = 1
+    while True:
+        candidate = output_path.with_name(f"{stem}_{counter}{suffix}")
+        if not candidate.exists():
+            return candidate
+        counter += 1
+
+
 def save_duplicate_report(
     report: pd.DataFrame,
     output_path: str | Path | None = None,
@@ -517,9 +619,12 @@ def save_duplicate_report(
     """Save the report table as CSV (plain paths, no images).
 
     Default location: <project>/data/duplicate_pairs_report.csv
+    If a file already exists at the target path, a numeric suffix (_1, _2, ...)
+    is appended so the previous file is never overwritten.
     """
     output_path = Path(output_path) if output_path is not None else DEFAULT_REPORT_PATH
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path = _non_colliding_path(output_path)
 
     to_save = report.copy()
     for column in ("path_a", "path_b"):
@@ -589,11 +694,14 @@ def save_label_corrections(
     """Save the automatic exclusions as CSV in the label_corrections.csv format.
 
     Default location: <project>/data/label_corrections_auto_duplicates.csv
+    If a file already exists at the target path, a numeric suffix (_1, _2, ...)
+    is appended so the previous file is never overwritten.
     """
     output_path = (
         Path(output_path) if output_path is not None else DEFAULT_LABEL_CORRECTIONS_PATH
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path = _non_colliding_path(output_path)
 
     corrections = to_label_corrections(report)
     corrections.to_csv(output_path, index=False)
