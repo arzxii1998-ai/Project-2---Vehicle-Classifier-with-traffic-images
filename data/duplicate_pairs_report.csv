@@ -22,4 +22,4 @@ similarity,cluster_num,same_class,class_a,class_b,same_split,split_a,split_b,fil
 1.0000,2,True,kamyunet,kamyunet,False,train,unclean,217156552.jpg,dataset/cleaned_V2/train/kamyunet/217156552.jpg,217156552.jpg,dataset/cleaned_V2/unclean/kamyunet/217156552.jpg,"keep A, exclude B"
 1.0000,2,True,minibus,minibus,False,train,unclean,198331521.jpg,dataset/cleaned_V2/train/minibus/198331521.jpg,198331521.jpg,dataset/cleaned_V2/unclean/minibus/198331521.jpg,"keep A, exclude B"
 1.0000,2,True,minibus,minibus,False,train,unclean,205737488.jpg,dataset/cleaned_V2/train/minibus/205737488.jpg,205737488.jpg,dataset/cleaned_V2/unclean/minibus/205737488.jpg,"keep A, exclude B"
-1.0000,2,True,neysan,neysan,False,train,unclean,214844236.jpg,dataset/cleaned_V2/train/neysan/214844236.jpg,214844236.jpg,dataset/cleaned_V2/unclean/neysan/214844236.jpg,"keep A, exclude B"
+1.0000,2,True,vanet,vanet,False,train,unclean,214844236.jpg,dataset/cleaned_V2/train/vanet/214844236.jpg,214844236.jpg,dataset/cleaned_V2/unclean/vanet/214844236.jpg,"keep A, exclude B"

@@ -94,9 +94,15 @@ class RunStats:
     csv_rows_unmatched: int = (
         0  # CSV rows whose filename/class/split never matched an actual image
     )
+    renamed_on_collision: int = (
+        0  # relabeled images that landed on a filename already taken by a
+        #    *different* image in the destination class/split, and were
+        #    therefore saved under a "(n)" suffix instead of overwriting it
+    )
     errors: list[str] = field(default_factory=list)
     conflict_details: list[str] = field(default_factory=list)
     unreadable_or_skipped: list[str] = field(default_factory=list)
+    rename_details: list[str] = field(default_factory=list)
 
 
 # --------------------------------------------------------------------------- #
@@ -184,19 +190,86 @@ def make_link(source: Path, destination: Path) -> None:
     as needed. Tries a hardlink first (matches the "not a full copy" intent
     and is transparent to torchvision's ImageFolder/DataLoader); falls back
     to a symlink if hardlinking isn't possible (e.g. across filesystems/drives).
+
+    Overwrite-safe *for re-runs only*: if `destination` already points at the
+    same `source` (same file, already linked here on a previous run of this
+    script), it is replaced so the script stays idempotent. If it exists and
+    points at a *different* source, it is left alone — the caller is expected
+    to have already resolved a non-colliding destination path (see
+    `resolve_non_colliding_destination`) before calling this function.
     """
     destination.parent.mkdir(parents=True, exist_ok=True)
 
     if destination.exists() or destination.is_symlink():
-        # Overwrite-safe: remove any stale link from a previous run so the
-        # script is idempotent when re-run.
-        destination.unlink()
+        if _same_file(source, destination):
+            destination.unlink()
+        else:
+            # Should not normally happen: callers must resolve collisions
+            # via resolve_non_colliding_destination() first. Guard here so
+            # we never silently clobber an unrelated file.
+            raise FileExistsError(
+                f"Refusing to overwrite '{destination}': it already exists "
+                f"and does not point at '{source}'."
+            )
 
     try:
         os.link(source, destination)
     except OSError:
         # Cross-device link or filesystem without hardlink support.
         os.symlink(source.resolve(), destination)
+
+
+def _same_file(source: Path, destination: Path) -> bool:
+    """
+    True if `destination` is already a link (hard or symbolic) to `source`,
+    i.e. relinking it is a safe no-op rather than a collision with a
+    different image.
+
+    NOTE: comparing resolved paths (`Path.resolve()`) is only correct for
+    *symlinks* — a hardlink is just another directory entry pointing at the
+    same inode, so `destination.resolve()` returns `destination`'s own path,
+    not `source`'s, and would never compare equal even though the files are
+    identical. `make_link` prefers hardlinks whenever possible, so we must
+    compare by (device, inode) via os.stat, which is correct for both
+    hardlinks and symlinks (stat follows symlinks by default).
+    """
+    try:
+        src_stat = source.stat()
+        dst_stat = destination.stat()
+    except OSError:
+        return False
+    return (src_stat.st_dev, src_stat.st_ino) == (dst_stat.st_dev, dst_stat.st_ino)
+
+
+def resolve_non_colliding_destination(dest: Path, source: Path) -> Path:
+    """
+    Returns a destination path guaranteed not to collide with an unrelated
+    existing file.
+
+    - If `dest` does not exist yet, or it already links to `source` (a
+      harmless re-run of this script), `dest` itself is returned unchanged.
+    - Otherwise `dest` is occupied by a *different* image (e.g. two source
+      images that legitimately share the same filename after a relabel
+      moved them into the same class/split folder). In that case a
+      Windows-Explorer-style " (1)", " (2)", ... suffix is inserted before
+      the file extension, incrementing until a free name is found:
+
+          215619169.jpg -> 215619169 (1).jpg -> 215619169 (2).jpg -> ...
+    """
+    if not dest.exists() and not dest.is_symlink():
+        return dest
+    if _same_file(source, dest):
+        return dest
+
+    stem, suffix = dest.stem, dest.suffix
+    counter = 1
+    while True:
+        candidate = dest.with_name(f"{stem} ({counter}){suffix}")
+        if not candidate.exists() and not candidate.is_symlink():
+            return candidate
+        if _same_file(source, candidate):
+            return candidate
+        counter += 1
 
 
 # --------------------------------------------------------------------------- #
@@ -292,6 +365,14 @@ def process_dataset(raw_dir: Path, output_dir: Path, csv_path: Path) -> RunStats
 
         if outcome == "no_action":
             dest = output_dir / split / cls / filename
+            dest = resolve_non_colliding_destination(dest, src_path)
+            if dest.name != filename:
+                stats.renamed_on_collision += 1
+                stats.rename_details.append(
+                    f"{split}/{cls}/{filename}: name already taken there by "
+                    f"a different image (likely relabeled in from elsewhere), "
+                    f"saved as '{dest.name}' instead."
+                )
             make_link(src_path, dest)
             stats.no_action_linked += 1
             continue
@@ -316,6 +397,15 @@ def process_dataset(raw_dir: Path, output_dir: Path, csv_path: Path) -> RunStats
                 continue
 
             dest = output_dir / target_split / target_class / filename
+            dest = resolve_non_colliding_destination(dest, src_path)
+            if dest.name != filename:
+                stats.renamed_on_collision += 1
+                stats.rename_details.append(
+                    f"Line {row.row_number}: {split}/{cls}/{filename} "
+                    f"relabeled to {target_split}/{target_class}/ — name "
+                    f"already taken there by a different image, saved as "
+                    f"'{dest.name}' instead."
+                )
             make_link(src_path, dest)
             stats.relabeled += 1
             if target_class == cls and target_split == split:
@@ -362,6 +452,9 @@ def print_report(stats: RunStats) -> None:
     )
     print(f"  -> excluded                             : {stats.excluded}")
     print(f"  -> conflicts (multiple actions, skipped): {stats.conflicts}")
+    print(
+        f"  -> relabeled but renamed to avoid overwrite: {stats.renamed_on_collision}"
+    )
 
     total_linked = stats.no_action_linked + stats.relabeled
     print(f"\nTotal files created in cleaned dataset: {total_linked}")
@@ -377,6 +470,11 @@ def print_report(stats: RunStats) -> None:
     if stats.unreadable_or_skipped:
         print("\n--- CSV ROWS WITH NO MATCHING IMAGE (possible typos) ---")
         for line in stats.unreadable_or_skipped:
+            print(f"  - {line}")
+
+    if stats.rename_details:
+        print("\n--- RELABELS RENAMED TO AVOID OVERWRITE ---")
+        for line in stats.rename_details:
             print(f"  - {line}")
 
     if stats.errors:
