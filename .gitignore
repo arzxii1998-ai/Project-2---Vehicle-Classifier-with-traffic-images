@@ -27,3 +27,6 @@ Thumbs.db
 
 # IDE
 .vscode/
+
+# timelapse
+timelapse/
