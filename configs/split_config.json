@@ -1,0 +1,6 @@
+{
+  "seed": 42,
+  "n_splits": 5,
+  "similarity_threshold": 0.82,
+  "class_counts": 8
+}
