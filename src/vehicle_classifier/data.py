@@ -1,8 +1,11 @@
 # %%
+import hashlib
+import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
-from PIL import Image
+from PIL import Image, ImageOps
 from torch.utils.data import Dataset
 
 BLUE = "\033[94m"
@@ -36,6 +39,9 @@ CLASS_NAMES = [
     "taxi",
     "vanet",
 ]
+
+IMAGE_SIZE = (288, 224)  # (height, width)
+DEFAULT_STATS_REL_PATH = "data/train_norm_stats.json"
 
 
 def get_class_mapping():
@@ -77,14 +83,105 @@ class ManifestDataset(Dataset):
         return image, self.labels[idx]
 
 
+# ::::::::::
+# Mean and STD funcs
+# ::::::::::
+
+
+def compute_mean_std(df, image_size=IMAGE_SIZE):
+    """Per-channel mean/std over the real image content (no padding), scale 0-1."""
+    height, width = image_size
+    channel_sum = np.zeros(3, dtype=np.float64)
+    channel_sq_sum = np.zeros(3, dtype=np.float64)
+    pixel_count = 0
+
+    for path in df["path"]:
+        image = Image.open(path).convert("RGB")
+        image = ImageOps.contain(image, (width, height), Image.Resampling.BICUBIC)
+        pixels = np.asarray(image, dtype=np.float64) / 255.0
+
+        channel_sum += pixels.sum(axis=(0, 1))
+        channel_sq_sum += (pixels**2).sum(axis=(0, 1))
+        pixel_count += pixels.shape[0] * pixels.shape[1]
+
+    mean = channel_sum / pixel_count
+    std = np.sqrt(channel_sq_sum / pixel_count - mean**2)
+    return mean.tolist(), std.tolist()
+
+
+def _train_fingerprint(df: pd.DataFrame):
+    """Short hash identifying exactly which train images are in df."""
+    keys = sorted((df["class"] + "/" + df["filename"]).tolist())
+    return hashlib.md5("\n".join(keys).encode("utf-8")).hexdigest()
+
+
+def load_or_compute_norm_stats(
+    train_df: pd.DataFrame, image_size=IMAGE_SIZE, stats_path=DEFAULT_STATS_REL_PATH
+):
+    """Return (mean, std) from the JSON cache, recomputing if it is stale or missing."""
+
+    full_path = PROJECT_ROOT / stats_path
+    fingerprint = _train_fingerprint(train_df)
+
+    if full_path.exists():
+        try:
+            with open(full_path) as f:
+                stats = json.load(f)
+
+            if stats["fingerprint"] == fingerprint and stats["image_size"] == list(
+                image_size
+            ):
+                return stats["mean"], stats["std"]
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    mean, std = compute_mean_std(train_df, image_size)
+    stats = {
+        "mean": mean,
+        "std": std,
+        "fingerprint": fingerprint,
+        "image_size": list(image_size),
+    }
+    with open(full_path, "w") as f:
+        json.dump(stats, f, indent=2)
+    return mean, std
+
+
+# ::::::::::
+# letterbox resize class and funcs.
+# ::::::::::
+
+
+class LetterboxResize:
+    def __init__(self, image_size, mean):
+        self.height, self.width = image_size
+        self.fill_color = tuple(round(m * 255) for m in mean)
+
+    def __call__(self, image):
+        return ImageOps.pad(
+            image,
+            (self.width, self.height),
+            method=Image.Resampling.BICUBIC,
+            color=self.fill_color,
+            centering=(0.5, 0.5),
+        )
+
+    def __repr__(self):
+        return f"LetterboxResize(size=({self.height}, {self.width}), fill={self.fill_color})"
+
+
 #  %%
 if __name__ == "__main__":
     class_to_idx, _ = get_class_mapping()
-    print_section("labeling ...")
+    print_section("1. labeling ...")
     for name, label in class_to_idx.items():
         print(f"- {name:<10} ---> label: {label:<10}")
 
-    print_section("loding Train and Val")
+    # -----------
+    # loading Train and Val Manifest and save in a DF
+    # -----------
+
+    print_section("2.loading Train and Val ...")
     print_subsection("1. Train:")
     train_df = load_manifest("train")
     print(train_df.head())
@@ -113,5 +210,40 @@ if __name__ == "__main__":
         "| label:",
         label,
     )
+
+    # -----------
+    # computing or loading Train images STD & Mean, for normalization.
+    # -----------
+
+    print_section("4. Train mean/std (per channel) ... ")
+    mean, std = load_or_compute_norm_stats(train_df)
+    print("mean:", [round(m, 4) for m in mean])
+    print("std :", [round(s, 4) for s in std])
+
+    # -----------
+    # Letterbox Resizing with padding in mean color (Testing)
+    # -----------
+
+    print_section("5. Letterbox Resizing testing ... ")
+    letterbox = LetterboxResize(IMAGE_SIZE, mean)
+    print(letterbox)
+
+    sizes = [Image.open(p).size for p in train_df["path"]]
+    ratios = [w / h for w, h in sizes]
+    widest = ratios.index(max(ratios))
+    tallest = ratios.index(min(ratios))
+    print(f"widest path: {train_df['path'][widest]}")
+    print(f"tallest path: {train_df['path'][tallest]}")
+
+    height, width = IMAGE_SIZE
+    for name, i in [("widest", widest), ("tallest", tallest)]:
+        original = Image.open(train_df["path"][i]).convert("RGB")
+        result = letterbox(original)
+        assert result.size == (IMAGE_SIZE[1], IMAGE_SIZE[0]), (
+            f"{name}: got {result.size}, expected {(width, height)} (width, height)"
+        )
+        print(f"{name}: original {original.size} -> {result.size}")
+        # result.show()
+
 
 # %%
