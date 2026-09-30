@@ -173,6 +173,49 @@ class LetterboxResize:
         return f"LetterboxResize(size=({self.height}, {self.width}), fill={self.fill_color})"
 
 
+# ::::::::::
+# Transforms funcs.
+# ::::::::::
+
+
+def build_transform(mean, std, image_size=IMAGE_SIZE, with_aug=False):
+    """Return train, Val transforms."""
+
+    letterbox = LetterboxResize(image_size, mean)
+
+    augmentations = []
+
+    if with_aug:
+        augmentations = [
+            v2.RandomHorizontalFlip(p=0.5),
+            v2.RandomAffine(
+                degrees=10,
+                translate=(0.08, 0.08),
+                scale=(0.8, 1.2),
+                interpolation=InterpolationMode.BILINEAR,
+                fill=letterbox.fill_color,
+            ),
+            v2.ColorJitter(brightness=0.25, contrast=0.25, saturation=0.15, hue=0.03),
+        ]
+
+    to_normalized_tensor = [
+        v2.ToImage(),
+        v2.ToDtype(torch.float32, scale=True),
+        v2.Normalize(mean=mean, std=std),
+    ]
+
+    train_transform = v2.Compose([letterbox, *augmentations, *to_normalized_tensor])
+    eval_transform = v2.Compose([letterbox, *to_normalized_tensor])
+    return train_transform, eval_transform
+
+
+def denormalize(tensor, mean, std):
+    """Undo Normalize so a tensor can be viewed as a normal image (values in 0-1)."""
+    mean_t = torch.tensor(mean).view(3, 1, 1)
+    std_t = torch.tensor(std).view(3, 1, 1)
+    return (tensor * std_t + mean_t).clamp(0, 1)
+
+
 #  %%
 if __name__ == "__main__":
     class_to_idx, _ = get_class_mapping()
@@ -248,5 +291,25 @@ if __name__ == "__main__":
         print(f"{name}: original {original.size} -> {result.size}")
         # result.show()
 
+    # -----------
+    # Transform Testing
+    # -----------
+    # %%
+    train_tf, val_tf = build_transform(mean, std, image_size=IMAGE_SIZE, with_aug=True)
+    print("train_tf:\n", train_tf, sep="")
+    print("val_tf:\n", Val_df, sep="")
+
+    sample_path = train_df.loc[train_df["class"] == "minibus", "path"].iloc[15]
+    sample = Image.open(sample_path).convert("RGB")
+
+    x = val_tf(sample)
+    print("shape:", tuple(x.shape), "| dtype:", x.dtype)
+    print("min/max:", round(x.min().item(), 3), round(x.max().item(), 3))
+
+    views = [denormalize(train_tf(sample), mean, std) for _ in range(8)]
+    save_path = PROJECT_ROOT / "outputs" / "debug" / "augmentation_grid.png"
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    save_image(views, save_path, nrow=4)
+    print("Saved:", save_path)
 
 # %%
