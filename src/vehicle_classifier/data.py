@@ -1,15 +1,19 @@
 # %%
 import hashlib
 import json
+import os
+import random
+import time
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
 from PIL import Image, ImageOps
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import InterpolationMode, v2
-from torchvision.utils import save_image
+from torchvision.utils import save_image  # noqa: F401
 
 BLUE = "\033[94m"
 GREEN = "\033[92m"
@@ -216,6 +220,129 @@ def denormalize(tensor, mean, std):
     return (tensor * std_t + mean_t).clamp(0, 1)
 
 
+# ::::::::::
+# Reproducibility and DataLoaders
+# ::::::::::
+
+
+def set_seed(seed: int = 42, deterministic: bool = True):
+    """Seeding every random number generator used in the project."""
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+    if deterministic:
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
+
+def seed_worker(worker_id):
+    """Seed numpy and random inside each DataLoader worker from torch's worker seed."""
+    worker_seed = torch.initial_seed() % 2**32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
+
+
+def get_dataloaders(
+    train_df,
+    val_df,
+    mean,
+    std,
+    batch_size=32,
+    with_aug=False,
+    image_size=IMAGE_SIZE,
+    num_workers=4,
+    seed=42,
+):
+    """Build (train_loader, val_loader)."""
+
+    train_tf, val_tf = build_transform(
+        mean, std, image_size=image_size, with_aug=with_aug
+    )
+
+    train_ds = ManifestDataset(train_df, transform=train_tf)
+    val_ds = ManifestDataset(val_df, transform=val_tf)
+
+    generator = torch.Generator()
+    generator.manual_seed(seed)
+
+    loader_kwargs = {
+        "batch_size": batch_size,
+        "num_workers": num_workers,
+        "pin_memory": torch.cuda.is_available(),
+        "persistent_workers": num_workers > 0,
+        "worker_init_fn": seed_worker,
+    }
+
+    train_loader = DataLoader(
+        train_ds, generator=generator, shuffle=True, **loader_kwargs
+    )
+    val_loader = DataLoader(val_ds, shuffle=False, **loader_kwargs)
+
+    return train_loader, val_loader
+
+
+# ::::::::::
+# Visual and speed checks
+# ::::::::::
+
+
+def show_samples(
+    images,
+    labels,
+    mean,
+    std,
+    preds=None,
+    confidences=None,
+    max_images=12,
+    ncols=4,
+    save_path=None,
+):
+    """Plot normalized image tensors with true labels (and predictions, if given)."""
+
+    _, idx_to_class = get_class_mapping()
+    n = min(max_images, len(images))
+    nrows = (n + ncols - 1) // ncols
+
+    fig, axes = plt.subplots(
+        nrows, ncols, figsize=(3 * ncols, 3.6 * nrows), squeeze=False
+    )
+    for ax in axes.flat:
+        ax.axis("off")
+
+    for i in range(n):
+        ax = axes.flat[i]
+        ax.imshow(denormalize(images[i], mean, std).permute(1, 2, 0).numpy())
+
+        title = f"true: {idx_to_class[int(labels[i])]}"
+        color = "black"
+        if preds is not None:
+            title += f"\npred: {idx_to_class[int(preds[i])]}"
+            if confidences is not None:
+                title += f" ({float(confidences[i]):.2f})"
+            color = "green" if int(preds[i]) == int(labels[i]) else "red"
+        ax.set_title(title, fontsize=9, color=color)
+
+    fig.tight_layout()
+    if save_path is not None:
+        save_path = Path(save_path)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(save_path, dpi=120)
+    plt.close(fig)
+
+
+def time_epochs(loader, epochs=2):
+    """Return the seconds taken by each full pass over the loader (loading only)."""
+    times = []
+    for _ in range(epochs):
+        start = time.perf_counter()
+        for _images, _labels in loader:
+            pass
+        times.append(time.perf_counter() - start)
+    return times
+
+
 #  %%
 if __name__ == "__main__":
     class_to_idx, _ = get_class_mapping()
@@ -234,9 +361,9 @@ if __name__ == "__main__":
     print("All paths exist:", train_df["path"].map(lambda p: p.exists()).all())
 
     print_subsection("2. Val")
-    Val_df = load_manifest("val")
-    print(Val_df.head())
-    print("All paths exist:", Val_df["path"].map(lambda p: p.exists()).all())
+    val_df = load_manifest("val")
+    print(val_df.head())
+    print("All paths exist:", val_df["path"].map(lambda p: p.exists()).all())
 
     # -----------
     # using a Class for getting images and labels based on the DFs
@@ -294,22 +421,77 @@ if __name__ == "__main__":
     # -----------
     # Transform Testing
     # -----------
-    # %%
-    train_tf, val_tf = build_transform(mean, std, image_size=IMAGE_SIZE, with_aug=True)
-    print("train_tf:\n", train_tf, sep="")
-    print("val_tf:\n", Val_df, sep="")
 
-    sample_path = train_df.loc[train_df["class"] == "minibus", "path"].iloc[15]
-    sample = Image.open(sample_path).convert("RGB")
+    print_section("6. Transform Testing ... ")
 
-    x = val_tf(sample)
-    print("shape:", tuple(x.shape), "| dtype:", x.dtype)
-    print("min/max:", round(x.min().item(), 3), round(x.max().item(), 3))
+    # train_tf, val_tf = build_transform(mean, std, image_size=IMAGE_SIZE, with_aug=True)
+    # print("train_tf:\n", train_tf, sep="")
+    # print("val_tf:\n", val_tf, sep="")
 
-    views = [denormalize(train_tf(sample), mean, std) for _ in range(8)]
-    save_path = PROJECT_ROOT / "outputs" / "debug" / "augmentation_grid.png"
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    save_image(views, save_path, nrow=4)
-    print("Saved:", save_path)
+    # sample_path = train_df.loc[train_df["class"] == "minibus", "path"].iloc[15]
+    # sample = Image.open(sample_path).convert("RGB")
 
+    # x = val_tf(sample)
+    # print("shape:", tuple(x.shape), "| dtype:", x.dtype)
+    # print("min/max:", round(x.min().item(), 3), round(x.max().item(), 3))
+
+    # views = [denormalize(train_tf(sample), mean, std) for _ in range(8)]
+    # save_path = PROJECT_ROOT / "outputs" / "debug" / "augmentation_grid.png"
+    # save_path.parent.mkdir(parents=True, exist_ok=True)
+    # save_image(views, save_path, nrow=4)
+    # print("Saved:", save_path)
+
+    # -----------
+    # DataLoader Testing
+    # -----------
+
+    print_section("7. DataLoader testing ... ")
+
+    def first_batch(seed):
+        set_seed(seed)
+        train_loader, _ = get_dataloaders(
+            train_df, val_df, mean, std, batch_size=32, with_aug=True, seed=seed
+        )
+
+        return next(iter(train_loader))
+
+    images_a, labels_a = first_batch(42)
+    images_b, labels_b = first_batch(42)
+    images_c, labels_c = first_batch(7)
+
+    print("images:", tuple(images_a.shape), images_a.dtype)
+    print("labels:", tuple(labels_a.shape), labels_a.dtype)
+    print("class counts in batch:", torch.bincount(labels_a, minlength=8).tolist())
+    print(
+        "same seed  -> identical batch:",
+        torch.equal(images_a, images_b) and torch.equal(labels_a, labels_b),
+    )
+    print("other seed -> identical labels:", torch.equal(labels_a, labels_c))
+
+    train_loader, val_loader = get_dataloaders(train_df, val_df, mean, std)
+    print("batches -> train:", len(train_loader), "| val:", len(val_loader))
+
+    # -----------
+    # Labelled samples (no augmentation)
+    # -----------
+
+    print_section("8. Labelled samples check ... ")
+    plain_loader, _ = get_dataloaders(train_df, val_df, mean, std, with_aug=False)
+    images, labels = next(iter(plain_loader))
+    batch_save_path = PROJECT_ROOT / "outputs" / "debug" / "train_batch_samples.png"
+    show_samples(images, labels, mean, std, save_path=batch_save_path)
+    print("Saved:", batch_save_path)
+
+    # -----------
+    # num_workers benchmark
+    # -----------
+
+    print_section("9. num_workers benchmark ... ")
+    print("CPU cores:", os.cpu_count())
+    for workers in [0, 2, 4]:
+        loader, _ = get_dataloaders(
+            train_df, val_df, mean, std, with_aug=True, num_workers=workers
+        )
+        times = time_epochs(loader, epochs=2)
+        print(f"num_workers={workers}: epoch times = {[round(t, 1) for t in times]} s")
 # %%
