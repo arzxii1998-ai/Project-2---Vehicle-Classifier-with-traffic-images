@@ -13,7 +13,7 @@ import torch
 from PIL import Image, ImageOps
 from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import InterpolationMode, v2
-from torchvision.utils import save_image  # noqa: F401
+from torchvision.utils import save_image  # noqa: F401, RUF100
 
 BLUE = "\033[94m"
 GREEN = "\033[92m"
@@ -424,22 +424,22 @@ if __name__ == "__main__":
 
     print_section("6. Transform Testing ... ")
 
-    # train_tf, val_tf = build_transform(mean, std, image_size=IMAGE_SIZE, with_aug=True)
-    # print("train_tf:\n", train_tf, sep="")
-    # print("val_tf:\n", val_tf, sep="")
+    train_tf, val_tf = build_transform(mean, std, image_size=IMAGE_SIZE, with_aug=True)
+    print("train_tf:\n", train_tf, sep="")
+    print("val_tf:\n", val_tf, sep="")
 
-    # sample_path = train_df.loc[train_df["class"] == "minibus", "path"].iloc[15]
-    # sample = Image.open(sample_path).convert("RGB")
+    sample_path = train_df.loc[train_df["class"] == "minibus", "path"].iloc[15]
+    sample = Image.open(sample_path).convert("RGB")
 
-    # x = val_tf(sample)
-    # print("shape:", tuple(x.shape), "| dtype:", x.dtype)
-    # print("min/max:", round(x.min().item(), 3), round(x.max().item(), 3))
+    x = val_tf(sample)
+    print("shape:", tuple(x.shape), "| dtype:", x.dtype)
+    print("min/max:", round(x.min().item(), 3), round(x.max().item(), 3))
 
-    # views = [denormalize(train_tf(sample), mean, std) for _ in range(8)]
-    # save_path = PROJECT_ROOT / "outputs" / "debug" / "augmentation_grid.png"
-    # save_path.parent.mkdir(parents=True, exist_ok=True)
-    # save_image(views, save_path, nrow=4)
-    # print("Saved:", save_path)
+    views = [denormalize(train_tf(sample), mean, std) for _ in range(8)]
+    save_path = PROJECT_ROOT / "outputs" / "debug" / "augmentation_grid.png"
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    save_image(views, save_path, nrow=4)
+    print("Saved:", save_path)
 
     # -----------
     # DataLoader Testing

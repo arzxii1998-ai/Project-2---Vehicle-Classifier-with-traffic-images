@@ -30,3 +30,6 @@ Thumbs.db
 
 # timelapse
 timelapse/
+
+# uv cache
+.uv-cache/
