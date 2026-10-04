@@ -1,0 +1,10 @@
+{
+  "run_name": "step_lr_&_aug_50epoch",
+  "target_accuracy": 0.95,
+  "threshold": 0.7,
+  "coverage": 0.8132295719844358,
+  "review_rate": 0.1867704280155642,
+  "accuracy_accepted": 0.9585326953748007,
+  "error_capture_rate": 0.6708860759493671,
+  "chosen_on": "validation"
+}

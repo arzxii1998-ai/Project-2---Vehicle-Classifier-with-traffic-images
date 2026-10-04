@@ -1,0 +1,32 @@
+{
+  "run_name": "step_lr",
+  "output_root": "outputs/runs",
+  "overwrite": false,
+  "seed": 42,
+  "batch_size": 32,
+  "num_workers": 4,
+  "with_aug": true,
+  "model": {
+    "model_name": "baseline_cnn",
+    "in_channels": 3,
+    "channels": [
+      32,
+      64,
+      128,
+      256
+    ],
+    "pool_type": "max",
+    "dropout_p": 0.0,
+    "num_classes": 8
+  },
+  "loss_type": "ce",
+  "optimizer": "adamw",
+  "lr": 0.001,
+  "weight_decay": 0.0,
+  "scheduler": "step",
+  "scheduler_params": {},
+  "epochs": 30,
+  "monitor": "macro_f1",
+  "mode": "max",
+  "patience": null
+}

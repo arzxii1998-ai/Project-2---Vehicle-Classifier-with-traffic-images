@@ -1,11 +1,11 @@
 {
   "run_name": "baseline_cnn",
   "output_root": "outputs/runs",
-  "overwrite": false,
+  "overwrite": true,
   "seed": 42,
   "batch_size": 32,
   "num_workers": 4,
-  "with_aug": false,
+  "with_aug": true,
   "model": {
     "model_name": "baseline_cnn",
     "in_channels": 3,

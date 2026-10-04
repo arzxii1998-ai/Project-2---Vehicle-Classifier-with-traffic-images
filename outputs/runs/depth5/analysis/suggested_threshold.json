@@ -1,0 +1,10 @@
+{
+  "run_name": "depth5",
+  "target_accuracy": 0.95,
+  "threshold": 0.7,
+  "coverage": 0.8949416342412452,
+  "review_rate": 0.10505836575875487,
+  "accuracy_accepted": 0.9594202898550724,
+  "error_capture_rate": 0.46153846153846156,
+  "chosen_on": "validation"
+}

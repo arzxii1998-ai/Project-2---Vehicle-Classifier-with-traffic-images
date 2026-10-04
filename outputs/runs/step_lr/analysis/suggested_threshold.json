@@ -1,0 +1,10 @@
+{
+  "run_name": "step_lr",
+  "target_accuracy": 0.95,
+  "threshold": 0.8,
+  "coverage": 0.6160830090791181,
+  "review_rate": 0.383916990920882,
+  "accuracy_accepted": 0.9663157894736842,
+  "error_capture_rate": 0.872,
+  "chosen_on": "validation"
+}

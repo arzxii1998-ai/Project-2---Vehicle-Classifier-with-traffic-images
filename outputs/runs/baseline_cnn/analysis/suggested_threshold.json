@@ -1,0 +1,10 @@
+{
+  "run_name": "baseline_cnn",
+  "target_accuracy": 0.95,
+  "threshold": 0.85,
+  "coverage": 0.7292746113989638,
+  "review_rate": 0.2707253886010363,
+  "accuracy_accepted": 0.9591474245115453,
+  "error_capture_rate": 0.7830188679245284,
+  "chosen_on": "validation"
+}

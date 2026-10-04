@@ -1,0 +1,43 @@
+{
+  "keep_fractions": {
+    "ambulance": 0.25,
+    "kamyun": 0.25,
+    "minibus": 0.25
+  },
+  "seed": 42,
+  "counts": {
+    "ambulance": {
+      "before": 278,
+      "after": 70
+    },
+    "autobus": {
+      "before": 370,
+      "after": 370
+    },
+    "kamyun": {
+      "before": 200,
+      "after": 50
+    },
+    "kamyunet": {
+      "before": 534,
+      "after": 534
+    },
+    "minibus": {
+      "before": 318,
+      "after": 80
+    },
+    "savari": {
+      "before": 402,
+      "after": 402
+    },
+    "taxi": {
+      "before": 384,
+      "after": 384
+    },
+    "vanet": {
+      "before": 597,
+      "after": 597
+    }
+  },
+  "fingerprint": "aff915ea28025ac8b1fa879350dbd17b"
+}

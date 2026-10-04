@@ -1,0 +1,10 @@
+{
+  "run_name": "aug",
+  "target_accuracy": 0.95,
+  "threshold": 0.85,
+  "coverage": 0.5966277561608301,
+  "review_rate": 0.4033722438391699,
+  "accuracy_accepted": 0.9565217391304348,
+  "error_capture_rate": 0.8518518518518519,
+  "chosen_on": "validation"
+}

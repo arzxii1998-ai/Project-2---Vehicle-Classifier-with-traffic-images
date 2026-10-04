@@ -1,6 +1,7 @@
 # %%
 import hashlib
 import json
+import math
 import os
 import random
 import time
@@ -11,7 +12,7 @@ import numpy as np
 import pandas as pd
 import torch
 from PIL import Image, ImageOps
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, Sampler
 from torchvision.transforms import InterpolationMode, v2
 from torchvision.utils import save_image  # noqa: F401, RUF100
 
@@ -221,6 +222,184 @@ def denormalize(tensor, mean, std):
 
 
 # ::::::::::
+# Simulated imbalance and balanced batches
+# ::::::::::
+
+# Settings of the "standard vs balanced batches" experiment.
+#   keep_fractions : share of the training images KEPT for each listed class
+#                    (classes that are not listed keep 100%).
+#   seed           : decides only WHICH images are kept. It is separate from the
+#                    training seed, so every run sees the identical subset.
+DEFAULT_IMBALANCE = {
+    "keep_fractions": {"ambulance": 0.25, "kamyun": 0.25, "minibus": 0.25},
+    "seed": 42,
+}
+
+
+def simulate_imbalance(train_df, keep_fractions, seed, save_dir=None):
+    """Return a reproducible, class-imbalanced subset of the training split.
+
+    For every class in keep_fractions, a fixed random share of its images is
+    kept (chosen without replacement); all other classes are kept completely.
+    Only the training split is reduced: validation and test stay untouched.
+
+    The choice for one class depends only on (seed, class index), so editing the
+    fraction of one class never changes which images are kept for another class.
+
+    If save_dir is given, two files are written there:
+        imbalanced_train_indices.csv : original_index, class, filename of every kept image
+        imbalance_summary.json       : fractions, seed, class counts, subset fingerprint
+    The fingerprint is identical for two runs exactly when their subsets are identical.
+
+    Returns the subset as a new DataFrame with a fresh 0..n-1 index, so row i
+    matches position i of a ManifestDataset built from it.
+    """
+    unknown = set(keep_fractions) - set(CLASS_NAMES)
+    if unknown:
+        raise ValueError(f"Classes not in CLASS_NAMES: {sorted(unknown)}")
+    for name, fraction in keep_fractions.items():
+        if not 0.0 < fraction <= 1.0:
+            raise ValueError(
+                f"keep fraction for {name!r} must be in (0, 1], got {fraction}"
+            )
+
+    kept_positions = []
+    for class_index, name in enumerate(CLASS_NAMES):
+        class_positions = np.flatnonzero((train_df["class"] == name).to_numpy())
+        if class_positions.size == 0:
+            raise ValueError(f"Class {name!r} has no training images")
+        n_keep = max(1, round(class_positions.size * keep_fractions.get(name, 1.0)))
+        rng = np.random.default_rng([seed, class_index])
+        chosen = rng.choice(class_positions, size=n_keep, replace=False)
+        kept_positions.extend(chosen.tolist())
+    kept_positions.sort()  # keep the original row order
+
+    subset = train_df.iloc[kept_positions]
+    original_index = subset.index.to_numpy()
+    subset = subset.reset_index(drop=True)
+
+    before = train_df["class"].value_counts()
+    after = subset["class"].value_counts()
+    counts = {
+        name: {"before": int(before.get(name, 0)), "after": int(after.get(name, 0))}
+        for name in CLASS_NAMES
+    }
+    fingerprint = _train_fingerprint(subset)
+
+    print_subsection("Simulated imbalance (training split only)")
+    print(f"{'class':<12}{'before':>8}{'after':>8}")
+    for name, count in counts.items():
+        print(f"{name:<12}{count['before']:>8}{count['after']:>8}")
+    sizes = [count["after"] for count in counts.values()]
+    print(
+        f"largest/smallest class: {max(sizes) / min(sizes):.1f} | "
+        f"subset fingerprint: {fingerprint[:12]}"
+    )
+
+    if save_dir is not None:
+        save_dir = Path(save_dir)
+        save_dir.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(
+            {
+                "original_index": original_index,
+                "class": subset["class"].to_numpy(),
+                "filename": subset["filename"].to_numpy(),
+            }
+        ).to_csv(save_dir / "imbalanced_train_indices.csv", index=False)
+        with open(save_dir / "imbalance_summary.json", "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "keep_fractions": keep_fractions,
+                    "seed": seed,
+                    "counts": counts,
+                    "fingerprint": fingerprint,
+                },
+                f,
+                indent=2,
+            )
+
+    return subset
+
+
+class BalancedBatchSampler(Sampler):
+    """Batch sampler that puts the same number of images of every class in each batch.
+
+    With batch_size=32 and 8 classes, every batch holds exactly 4 images per class.
+    batch_size must be divisible by the number of classes.
+
+    How the images are drawn: for each class, the sampler walks through a shuffled
+    copy of that class's images, 4 at a time. When the copy is used up, the class is
+    reshuffled and the walk starts again. A large class therefore shows (almost) each
+    image once per pass, and a small class is cycled through several times: this is
+    sampling with replacement across passes, but every image of a class is used about
+    equally often. The augmentation of the Dataset makes each repeat look different.
+
+    There is no natural epoch length (small classes never "run out"), so the epoch
+    length is chosen by num_batches. Use len(standard_loader) to give the balanced
+    and the standard run the same number of optimizer steps.
+
+    Pass it to DataLoader as batch_sampler. DataLoader then refuses batch_size,
+    shuffle, sampler, and drop_last, because the sampler already decides all of them.
+
+    Reproducible: the same seed gives the same sequence of batches.
+    """
+
+    def __init__(
+        self,
+        labels,
+        batch_size,
+        num_batches,
+        num_classes: int = len(CLASS_NAMES),
+        seed=42,
+    ):
+        super().__init__()
+        if batch_size % num_classes != 0:
+            raise ValueError(
+                f"batch_size ({batch_size}) must be divisible by "
+                f"the number of classes ({num_classes})"
+            )
+        if num_batches < 1:
+            raise ValueError(f"num_batches must be at least 1, got {num_batches}")
+
+        labels = np.asarray(labels)
+        self.class_indices = [np.flatnonzero(labels == c) for c in range(num_classes)]
+        missing = [c for c, idx in enumerate(self.class_indices) if idx.size == 0]
+        if missing:
+            raise ValueError(
+                f"No training image for class indices {missing}: "
+                "balanced batches need at least one image of every class"
+            )
+
+        self.num_classes = num_classes
+        self.per_class = batch_size // num_classes
+        self.num_batches = num_batches
+        self.rng = np.random.default_rng(seed)  # keeps its state across epochs
+
+    def __len__(self):
+        return self.num_batches
+
+    def __iter__(self):
+        orders = [self.rng.permutation(idx) for idx in self.class_indices]
+        positions = [0] * self.num_classes
+
+        for _ in range(self.num_batches):
+            batch = []
+            for c in range(self.num_classes):
+                needed = self.per_class
+                while needed > 0:
+                    if positions[c] == len(orders[c]):  # class used up: reshuffle
+                        orders[c] = self.rng.permutation(self.class_indices[c])
+                        positions[c] = 0
+                    take = min(needed, len(orders[c]) - positions[c])
+                    batch.extend(orders[c][positions[c] : positions[c] + take].tolist())
+                    positions[c] += take
+                    needed -= take
+            yield self.rng.permutation(
+                batch
+            ).tolist()  # mix the classes inside the batch
+
+
+# ::::::::::
 # Reproducibility and DataLoaders
 # ::::::::::
 
@@ -254,8 +433,16 @@ def get_dataloaders(
     image_size=IMAGE_SIZE,
     num_workers=4,
     seed=42,
+    balanced_batches=False,
 ):
-    """Build (train_loader, val_loader)."""
+    """Build (train_loader, val_loader).
+
+    balanced_batches=False (default): the train loader shuffles the images.
+    balanced_batches=True : every train batch holds the same number of images of
+        each class (see BalancedBatchSampler). The number of batches per epoch
+        equals that of the standard loader, so both modes take the same number of
+        optimizer steps. The validation loader is never changed.
+    """
 
     train_tf, val_tf = build_transform(
         mean, std, image_size=image_size, with_aug=with_aug
@@ -275,9 +462,23 @@ def get_dataloaders(
         "worker_init_fn": seed_worker,
     }
 
-    train_loader = DataLoader(
-        train_ds, generator=generator, shuffle=True, **loader_kwargs
-    )
+    if balanced_batches:
+        batch_sampler = BalancedBatchSampler(
+            labels=train_df["label"].to_numpy(),
+            batch_size=batch_size,
+            num_batches=math.ceil(len(train_ds) / batch_size),
+            seed=seed,
+        )
+        # DataLoader forbids batch_size together with batch_sampler, so the
+        # train loader gets the shared options without batch_size.
+        train_kwargs = {k: v for k, v in loader_kwargs.items() if k != "batch_size"}
+        train_loader = DataLoader(
+            train_ds, generator=generator, batch_sampler=batch_sampler, **train_kwargs
+        )
+    else:
+        train_loader = DataLoader(
+            train_ds, generator=generator, shuffle=True, **loader_kwargs
+        )
     val_loader = DataLoader(val_ds, shuffle=False, **loader_kwargs)
 
     return train_loader, val_loader
@@ -494,4 +695,44 @@ if __name__ == "__main__":
         )
         times = time_epochs(loader, epochs=2)
         print(f"num_workers={workers}: epoch times = {[round(t, 1) for t in times]} s")
+
+    # -----------
+    # Simulated imbalance and balanced batches
+    # -----------
+
+    print_section("10. Simulated imbalance and balanced batches ... ")
+
+    keep = DEFAULT_IMBALANCE["keep_fractions"]
+    imb_seed = DEFAULT_IMBALANCE["seed"]
+    subset = simulate_imbalance(train_df, keep, imb_seed)
+    subset_again = simulate_imbalance(train_df, keep, imb_seed)
+    assert subset["path"].tolist() == subset_again["path"].tolist()
+    assert set(subset["path"]) <= set(train_df["path"])
+    print("same seed -> identical subset: True | subset is part of train: True")
+
+    labels_np = subset["label"].to_numpy()
+    n_batches = len(
+        get_dataloaders(subset, val_df, mean, std, num_workers=0)[0]
+    )  # batches of the standard loader
+    sampler = BalancedBatchSampler(labels_np, batch_size=32, num_batches=n_batches)
+    batches = list(sampler)
+    per_class_counts = [np.bincount(labels_np[b], minlength=8) for b in batches]
+    assert len(batches) == n_batches == len(sampler)
+    assert all((counts == 4).all() for counts in per_class_counts)
+    print(f"{n_batches} batches, every batch has exactly 4 images per class: True")
+
+    again = list(BalancedBatchSampler(labels_np, 32, n_batches))
+    assert again == batches
+    print("same seed -> identical batches: True")
+
+    bal_loader, bal_val_loader = get_dataloaders(
+        subset, val_df, mean, std, with_aug=True, balanced_batches=True
+    )
+    images, labels = next(iter(bal_loader))
+    print(
+        "real balanced batch, class counts:",
+        torch.bincount(labels, minlength=8).tolist(),
+    )
+    assert len(bal_val_loader.dataset) == len(val_df)
+    print("validation loader unchanged: True")
 # %%
