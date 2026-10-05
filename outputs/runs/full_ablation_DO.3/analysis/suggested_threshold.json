@@ -1,0 +1,10 @@
+{
+  "run_name": "full_ablation_DO.3",
+  "target_accuracy": 0.95,
+  "threshold": 0.6,
+  "coverage": 0.953307392996109,
+  "review_rate": 0.04669260700389105,
+  "accuracy_accepted": 0.9619047619047619,
+  "error_capture_rate": 0.391304347826087,
+  "chosen_on": "validation"
+}

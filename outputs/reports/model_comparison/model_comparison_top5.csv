@@ -1,0 +1,6 @@
+﻿model,best_epoch,accuracy,macro_precision,macro_recall,macro_f1,lowest_recall_class,lowest_precision_class,val_loss,trainable_params
+resnet18_full_bce,20,97.67,97.55,97.14,97.33,kamyun,kamyun,0.029,11180616
+resnet18_full,13,97.41,96.84,97.42,97.08,kamyunet,kamyun,0.1152,11180616
+resnet18_finetune,23,97.02,96.78,96.15,96.43,kamyun,kamyun,0.1054,8397832
+full_ablation_pro,48,95.46,95.14,94.93,95.01,kamyun,kamyun,0.044,981288
+full_ablation_bce,49,94.81,94.04,95.06,94.47,kamyun,kamyun,0.0472,981288

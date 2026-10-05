@@ -29,7 +29,7 @@ from torch import nn, optim
 
 from vehicle_classifier.data import (
     CLASS_NAMES,
-    DEFAULT_IMBALANCE,
+    DEFAULT_IMBALANCE,  # noqa: F401
     IMAGE_SIZE,
     PROJECT_ROOT,
     get_dataloaders,
@@ -591,32 +591,40 @@ def main():
     # cfg["model"]["channels"] = [32, 64, 128, 256, 256]
     # run_experiment(cfg)
 
+    """dropout_p = 0.3"""
+
     # cfg = copy.deepcopy(DEFAULT_CONFIG)
+    # cfg["overwrite"] = True
     # cfg["run_name"] = "full_ablation_DO.3"
     # cfg["with_aug"] = True
     # cfg["scheduler"] = "step"
     # cfg["epochs"] = 50
     # cfg["model"]["channels"] = [32, 64, 128, 256, 256]
-    # cfg["dropout_p"] = 0.3
+    # cfg["model"]["dropout_p"] = 0.3
     # run_experiment(cfg)
 
+    """dropout_p = 0.5"""
+
     # cfg = copy.deepcopy(DEFAULT_CONFIG)
+    # cfg["overwrite"] = True
     # cfg["run_name"] = "full_ablation_DO.5"
     # cfg["with_aug"] = True
     # cfg["scheduler"] = "step"
     # cfg["epochs"] = 50
     # cfg["model"]["channels"] = [32, 64, 128, 256, 256]
-    # cfg["dropout_p"] = 0.5
+    # cfg["model"]["dropout_p"] = 0.5
     # run_experiment(cfg)
 
-    # cfg = copy.deepcopy(DEFAULT_CONFIG)
-    # cfg["run_name"] = "full_ablation_bce"
-    # cfg["with_aug"] = True
-    # cfg["scheduler"] = "step"
-    # cfg["epochs"] = 50
-    # cfg["model"]["channels"] = [32, 64, 128, 256, 256]
-    # cfg["loss_type"] = "bce"
-    # run_experiment(cfg)
+    """bce"""
+
+    # # cfg = copy.deepcopy(DEFAULT_CONFIG)
+    # # cfg["run_name"] = "full_ablation_bce"
+    # # cfg["with_aug"] = True
+    # # cfg["scheduler"] = "step"
+    # # cfg["epochs"] = 50
+    # # cfg["model"]["channels"] = [32, 64, 128, 256, 256]
+    # # cfg["loss_type"] = "bce"
+    # # run_experiment(cfg)
 
     # cfg = copy.deepcopy(DEFAULT_CONFIG)
     # cfg["overwrite"] = True
@@ -625,8 +633,10 @@ def main():
     # cfg["scheduler"] = "step"
     # cfg["epochs"] = 50
     # cfg["model"]["channels"] = [32, 64, 128, 256, 256]
-    # cfg["pool_type"] = "avg"
+    # cfg["model"]["pool_type"] = "avg"
     # run_experiment(cfg)
+
+    """weight_decay = 1e-2 & 1e-4"""
 
     # cfg = copy.deepcopy(DEFAULT_CONFIG)
     # cfg["overwrite"] = True
@@ -648,6 +658,8 @@ def main():
     # cfg["weight_decay"] = 1e-2
     # run_experiment(cfg)
 
+    """plateau"""
+
     # cfg = copy.deepcopy(DEFAULT_CONFIG)
     # cfg["overwrite"] = True
     # cfg["run_name"] = "full_ablation_plateau"
@@ -656,6 +668,8 @@ def main():
     # cfg["epochs"] = 50
     # cfg["model"]["channels"] = [32, 64, 128, 256, 256]
     # run_experiment(cfg)
+
+    """full_ablation_bce_plateau_decoy"""
 
     # cfg = copy.deepcopy(DEFAULT_CONFIG)
     # cfg["run_name"] = "full_ablation_bce_plateau_decoy"
@@ -667,23 +681,34 @@ def main():
     # cfg["weight_decay"] = 1e-2
     # run_experiment(cfg)
 
-    """Simulated imbalance and balanced batches"""
-
-    base = copy.deepcopy(DEFAULT_CONFIG)
-    base["with_aug"] = True
-    base["scheduler"] = "step"
-    base["epochs"] = 50
-    base["model"]["channels"] = [32, 64, 128, 256, 256]
-    base["imbalance"] = copy.deepcopy(DEFAULT_IMBALANCE)
-
-    cfg = copy.deepcopy(base)
-    cfg["run_name"] = "imbalanced_standard"
+    cfg = copy.deepcopy(DEFAULT_CONFIG)
+    cfg["run_name"] = "full_ablation_pro"
+    cfg["with_aug"] = True
+    cfg["scheduler"] = "plateau"
+    cfg["epochs"] = 50
+    cfg["model"]["channels"] = [32, 64, 128, 256, 256]
+    cfg["loss_type"] = "bce"
+    cfg["weight_decay"] = 1e-2
+    cfg["model"]["dropout_p"] = 0.3
     run_experiment(cfg)
 
-    cfg = copy.deepcopy(base)
-    cfg["run_name"] = "imbalanced_balanced"
-    cfg["balanced_batches"] = True
-    run_experiment(cfg)
+    # """Simulated imbalance and balanced batches"""
+
+    # base = copy.deepcopy(DEFAULT_CONFIG)
+    # base["with_aug"] = True
+    # base["scheduler"] = "step"
+    # base["epochs"] = 50
+    # base["model"]["channels"] = [32, 64, 128, 256, 256]
+    # base["imbalance"] = copy.deepcopy(DEFAULT_IMBALANCE)
+
+    # cfg = copy.deepcopy(base)
+    # cfg["run_name"] = "imbalanced_standard"
+    # run_experiment(cfg)
+
+    # cfg = copy.deepcopy(base)
+    # cfg["run_name"] = "imbalanced_balanced"
+    # cfg["balanced_batches"] = True
+    # run_experiment(cfg)
 
 
 if __name__ == "__main__":

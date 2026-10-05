@@ -1,0 +1,30 @@
+{
+  "run_name": "resnet18_full",
+  "output_root": "outputs/runs",
+  "overwrite": false,
+  "seed": 42,
+  "batch_size": 32,
+  "num_workers": 4,
+  "with_aug": true,
+  "imbalance": null,
+  "balanced_batches": false,
+  "model": {
+    "model_name": "resnet18",
+    "mode": "full",
+    "num_classes": 8,
+    "dropout_p": 0.3
+  },
+  "loss_type": "ce",
+  "optimizer": "adamw",
+  "lr": 0.001,
+  "weight_decay": 0.01,
+  "scheduler": "plateau",
+  "scheduler_params": {},
+  "epochs": 50,
+  "monitor": "macro_f1",
+  "mode": "max",
+  "patience": null,
+  "head_lr": 0.001,
+  "backbone_lr": 0.0001,
+  "init_checkpoint": null
+}

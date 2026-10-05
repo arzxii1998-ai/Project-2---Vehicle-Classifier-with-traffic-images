@@ -1,0 +1,10 @@
+{
+  "run_name": "full_ablation_wdecay-e-2",
+  "target_accuracy": 0.95,
+  "threshold": 0.6,
+  "coverage": 0.9610894941634242,
+  "review_rate": 0.038910505836575876,
+  "accuracy_accepted": 0.9554655870445344,
+  "error_capture_rate": 0.25,
+  "chosen_on": "validation"
+}

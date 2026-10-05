@@ -293,8 +293,7 @@ def apply_review_threshold(confidence, threshold) -> bool:
     needs_review : np.ndarray of bool, shape [N]
 
     The threshold must be chosen with validation data only, never with test data.
-    This function can also be applied to images of an unseen class (such as
-    "neysan"): the share of True values is then the share of unknown vehicles
+    This function can also be applied to images of an unseen class: the share of True values is then the share of unknown vehicles
     that the system correctly refuses to label.
     """
     if not 0.0 <= threshold <= 1.0:

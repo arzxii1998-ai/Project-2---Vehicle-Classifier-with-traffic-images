@@ -2,23 +2,30 @@
 
 Contents
 --------
-1. Settings          : folders, file names, plot options
+1. Settings          : folders, file names, plot options, TOP_N
 2. Loading           : load_summaries
-3. Table             : build_comparison_table, find_best_models, round_for_display
+3. Table             : build_comparison_table, find_best_models, select_top_models,
+                       round_for_display
 4. Plot              : plot_comparison
-5. Runner            : main
+5. Runner            : save_report, main
 
 For every folder in outputs/runs/ that holds a summary.json, this script reads
-the validation result of the best checkpoint and creates two files in
+the validation result of the best checkpoint and creates four files in
 outputs/reports/model_comparison/:
-    model_comparison.png : grouped bars (accuracy and macro F1) per model,
-                           a star marks the best model of each metric
-    model_comparison.csv : the table behind the figure (values in percent,
-                           rounded for display)
+    model_comparison.png      : grouped bars (accuracy and macro F1) for ALL models,
+                                a star marks the best model of each metric
+    model_comparison.csv      : the table behind that figure (values in percent,
+                                rounded for display)
+    model_comparison_topN.png : the same figure for the TOP_N models only
+    model_comparison_topN.csv : the same table for the TOP_N models only
 
-Both files are overwritten on every run.
+The top models are ranked by macro F1 (the metric used to pick best checkpoints).
+All files are overwritten on every run.
 
-The best model of each metric is found on the raw, unrounded values.
+The best model of each metric is found once, on the raw, unrounded values of ALL
+models. The top-N figure reuses it, so a star always means "best among all
+models". If the best model of a metric is not among the top N by macro F1,
+that metric simply has no star in the top-N figure.
 Rounding is applied only to what is shown or saved.
 
 Usage
@@ -50,6 +57,10 @@ RUNS_ROOT = PROJECT_ROOT / "outputs" / "runs"
 REPORT_DIR = PROJECT_ROOT / "outputs" / "reports" / "model_comparison"
 FIGURE_NAME = "model_comparison.png"
 TABLE_NAME = "model_comparison.csv"
+
+TOP_N = 5  # number of best models (by macro F1) in the second figure and table
+TOP_FIGURE_NAME = f"model_comparison_top{TOP_N}.png"
+TOP_TABLE_NAME = f"model_comparison_top{TOP_N}.csv"
 
 Y_MIN = 0  # lower end of the percent axis; raise it (for example 50) to zoom in
 STAR_COLOR = "#D4A017"
@@ -143,6 +154,15 @@ def find_best_models(table):
     }
 
 
+def select_top_models(table, top_n=TOP_N):
+    """Return the top_n models with the highest macro F1, best first.
+
+    If there are fewer than top_n models, all of them are returned.
+    """
+    ranked = table.sort_values("macro_f1", ascending=False)
+    return ranked.head(top_n).reset_index(drop=True)
+
+
 def round_for_display(table):
     """Return a copy of the table rounded for printing and saving."""
     return table.round(DISPLAY_DECIMALS)
@@ -153,11 +173,17 @@ def round_for_display(table):
 # ---------------------------------------------------------------------------
 
 
-def plot_comparison(table, best_models, save_path):
+def plot_comparison(
+    table,
+    best_models,
+    save_path,
+    title="Model comparison (validation, best checkpoint)",
+):
     """Grouped bar chart: accuracy and macro F1 (in percent) for every model.
 
     Every bar has its rounded value written above it. The bar of the best
     model of each metric (from best_models) gets a star above its value.
+    A model in best_models that is not in the table simply gets no star.
     """
     n_models = len(table)
     x = np.arange(n_models)
@@ -199,11 +225,7 @@ def plot_comparison(table, best_models, save_path):
     ax.set_yticks(range(Y_MIN, 101, 10))
     ax.set_ylim(Y_MIN, 112)  # headroom above 100 for labels and stars
     ax.set_ylabel("Score (%)")
-    ax.set_title(
-        "Model comparison (validation, best checkpoint)",
-        fontsize=12,
-        fontweight="bold",
-    )
+    ax.set_title(title, fontsize=12, fontweight="bold")
     ax.grid(True, axis="y", alpha=0.3)
     ax.set_axisbelow(True)
     for side in ("top", "right"):
@@ -220,7 +242,7 @@ def plot_comparison(table, best_models, save_path):
             markersize=15,
         )
     )
-    labels.append("Best model in metric")
+    labels.append("Best model in metric (among all models)")
     ax.legend(
         handles,
         labels,
@@ -241,29 +263,54 @@ def plot_comparison(table, best_models, save_path):
 # ---------------------------------------------------------------------------
 
 
-def main():
-    print_section("Model comparison")
-
-    summaries = load_summaries()
-    table = build_comparison_table(summaries)  # raw values
-    best_models = find_best_models(table)  # decided on raw values
-    shown = round_for_display(table)  # rounded copy for display only
-
+def save_report(table, best_models, figure_path, table_path, title):
+    """Print the table, then save its figure and its CSV (rounded for display)."""
+    shown = round_for_display(table)
     print(shown.to_string(index=False))
-    print()
-    for column, label, _color in PLOTTED_METRICS:
-        print(f"Best model by {label}: {colorize(best_models[column], Colors.GREEN)}")
 
-    figure_path = REPORT_DIR / FIGURE_NAME
-    table_path = REPORT_DIR / TABLE_NAME
-
-    plot_comparison(table, best_models, figure_path)
-    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    plot_comparison(table, best_models, figure_path, title)
+    table_path.parent.mkdir(parents=True, exist_ok=True)
     shown.to_csv(table_path, index=False, encoding="utf-8-sig")
 
     print()
     print(colorize(f"Saved: {figure_path}", Colors.GRAY))
     print(colorize(f"Saved: {table_path}", Colors.GRAY))
+
+
+def main():
+    summaries = load_summaries()
+    table = build_comparison_table(summaries)  # raw values, all models
+    best_models = find_best_models(table)  # decided on raw values of all models
+
+    # -----------
+    # All models
+    # -----------
+
+    print_section(f"Model comparison: all {len(table)} models")
+    save_report(
+        table,
+        best_models,
+        REPORT_DIR / FIGURE_NAME,
+        REPORT_DIR / TABLE_NAME,
+        title="Model comparison (validation, best checkpoint)",
+    )
+    print()
+    for column, label, _color in PLOTTED_METRICS:
+        print(f"Best model by {label}: {colorize(best_models[column], Colors.GREEN)}")
+
+    # -----------
+    # Top N models only
+    # -----------
+
+    top_table = select_top_models(table, top_n=5)
+    print_section(f"Model comparison: top {len(top_table)} models by macro F1")
+    save_report(
+        top_table,
+        best_models,
+        REPORT_DIR / TOP_FIGURE_NAME,
+        REPORT_DIR / TOP_TABLE_NAME,
+        title=f"Top {len(top_table)} models by macro F1 (validation, best checkpoint)",
+    )
 
 
 if __name__ == "__main__":

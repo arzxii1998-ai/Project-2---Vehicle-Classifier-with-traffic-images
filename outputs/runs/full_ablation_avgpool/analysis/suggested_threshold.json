@@ -1,0 +1,10 @@
+{
+  "run_name": "full_ablation_avgpool",
+  "target_accuracy": 0.95,
+  "threshold": 0.7,
+  "coverage": 0.8897535667963683,
+  "review_rate": 0.11024643320363164,
+  "accuracy_accepted": 0.9606413994169096,
+  "error_capture_rate": 0.5178571428571429,
+  "chosen_on": "validation"
+}

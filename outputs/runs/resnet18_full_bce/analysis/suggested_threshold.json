@@ -1,0 +1,10 @@
+{
+  "run_name": "resnet18_full_bce",
+  "target_accuracy": 0.95,
+  "threshold": 0.3,
+  "coverage": 0.9987029831387808,
+  "review_rate": 0.0012970168612191958,
+  "accuracy_accepted": 0.9766233766233766,
+  "error_capture_rate": 0.0,
+  "chosen_on": "validation"
+}

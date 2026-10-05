@@ -1,0 +1,10 @@
+{
+  "run_name": "full_ablation_bce_plateau_decoy",
+  "target_accuracy": 0.95,
+  "threshold": 0.3,
+  "coverage": 0.9714656290531777,
+  "review_rate": 0.028534370946822308,
+  "accuracy_accepted": 0.9599465954606141,
+  "error_capture_rate": 0.25,
+  "chosen_on": "validation"
+}

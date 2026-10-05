@@ -1,0 +1,10 @@
+{
+  "run_name": "full_ablation_pro",
+  "target_accuracy": 0.95,
+  "threshold": 0.3,
+  "coverage": 0.9701686121919585,
+  "review_rate": 0.029831387808041506,
+  "accuracy_accepted": 0.9625668449197861,
+  "error_capture_rate": 0.2,
+  "chosen_on": "validation"
+}

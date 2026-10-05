@@ -1,0 +1,10 @@
+{
+  "run_name": "imbalanced_standard",
+  "target_accuracy": 0.95,
+  "threshold": 0.8,
+  "coverage": 0.8352788586251622,
+  "review_rate": 0.16472114137483787,
+  "accuracy_accepted": 0.9627329192546584,
+  "error_capture_rate": 0.6666666666666666,
+  "chosen_on": "validation"
+}

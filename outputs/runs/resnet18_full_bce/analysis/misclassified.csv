@@ -1,0 +1,19 @@
+﻿sample_index,path,true_class,pred_class,confidence
+186,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\kamyun\215956539.jpg,kamyun,kamyunet,0.9999145
+227,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\kamyunet\199185521.jpg,kamyunet,kamyun,0.9998709
+254,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\kamyunet\215121872.jpg,kamyunet,kamyun,0.999383
+691,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\vanet\207517475.jpg,vanet,savari,0.99898046
+687,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\vanet\207074343.jpg,vanet,savari,0.99793625
+199,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\kamyun\217758646.jpg,kamyun,kamyunet,0.9966809
+204,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\kamyun\218330500.jpg,kamyun,kamyunet,0.9904298
+217,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\kamyunet\195660529.jpg,kamyunet,kamyun,0.98421973
+328,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\kamyunet\218689825.jpg,kamyunet,kamyun,0.97746575
+208,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\kamyun\218753345.jpg,kamyun,kamyunet,0.9716034
+695,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\vanet\208034728.jpg,vanet,savari,0.9526951
+164,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\kamyun\196384553.jpg,kamyun,kamyunet,0.9409168
+177,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\kamyun\215435203.jpg,kamyun,kamyunet,0.842041
+566,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\taxi\216098185.jpg,taxi,savari,0.55360967
+370,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\minibus\210102777.jpg,minibus,kamyunet,0.5415426
+746,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\vanet\216896507.jpg,vanet,savari,0.42359394
+1,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\ambulance\202045377.jpg,ambulance,vanet,0.36430445
+4,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\dataset\Combined Dataset\train\ambulance\205326290.jpg,ambulance,vanet,0.34054637

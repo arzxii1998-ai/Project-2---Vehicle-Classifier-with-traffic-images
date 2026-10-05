@@ -1,0 +1,10 @@
+{
+  "run_name": "full_ablation_plateau",
+  "target_accuracy": 0.95,
+  "threshold": 0.6,
+  "coverage": 0.9753566796368353,
+  "review_rate": 0.02464332036316472,
+  "accuracy_accepted": 0.9507978723404256,
+  "error_capture_rate": 0.075,
+  "chosen_on": "validation"
+}

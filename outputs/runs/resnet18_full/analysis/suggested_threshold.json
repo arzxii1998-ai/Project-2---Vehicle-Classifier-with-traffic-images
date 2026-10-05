@@ -1,0 +1,10 @@
+{
+  "run_name": "resnet18_full",
+  "target_accuracy": 0.95,
+  "threshold": 0.3,
+  "coverage": 1.0,
+  "review_rate": 0.0,
+  "accuracy_accepted": 0.9740596627756161,
+  "error_capture_rate": 0.0,
+  "chosen_on": "validation"
+}

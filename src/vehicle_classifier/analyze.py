@@ -581,26 +581,53 @@ def analyze(run_name, top_k=DEFAULT_TOP_K, target_accuracy=DEFAULT_TARGET_ACCURA
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Analyze one finished training run.")
-    parser.add_argument(
-        "--run",
-        default=DEFAULT_RUN_NAME,
-        help=f"run_name of the run to analyze (default: {DEFAULT_RUN_NAME})",
-    )
-    parser.add_argument(
-        "--top-k",
-        type=int,
-        default=DEFAULT_TOP_K,
-        help="number of mistakes shown in the image gallery",
-    )
-    parser.add_argument(
-        "--target-accuracy",
-        type=float,
-        default=DEFAULT_TARGET_ACCURACY,
-        help="accuracy wanted on automatically accepted predictions",
-    )
-    args = parser.parse_args()
-    analyze(args.run, top_k=args.top_k, target_accuracy=args.target_accuracy)
+    DEFAULT_RUN_NAME_list = [
+        # "aug",
+        # "baseline_cnn",
+        # "depth5",
+        # "full_ablation",
+        # "full_ablation_avgpool",
+        # "full_ablation_bce",
+        # "full_ablation_bce_plateau_decoy",
+        # "full_ablation_DO.3",
+        # "full_ablation_DO.5",
+        # "full_ablation_plateau",
+        # "full_ablation_pro",
+        # "full_ablation_wdecay-e-2",
+        # "full_ablation_wdecay-e-4",
+        # "imbalanced_balanced",
+        # "imbalanced_standard",
+        # "step_lr",
+        # "step_lr_&_aug_50epoch",
+        "resnet18_frozen",
+        "resnet18_finetune",
+        "resnet18_full",
+        "resnet18_full_bce",
+    ]
+
+    for name in DEFAULT_RUN_NAME_list:
+        parser = argparse.ArgumentParser(
+            description="Analyze one finished training run."
+        )
+        parser.add_argument(
+            "--run",
+            default=name,
+            help=f"run_name of the run to analyze (default: {name})",
+        )
+        parser.add_argument(
+            "--top-k",
+            type=int,
+            default=DEFAULT_TOP_K,
+            help="number of mistakes shown in the image gallery",
+        )
+        parser.add_argument(
+            "--target-accuracy",
+            type=float,
+            default=DEFAULT_TARGET_ACCURACY,
+            help="accuracy wanted on automatically accepted predictions",
+        )
+        args = parser.parse_args()
+        analyze(args.run, top_k=args.top_k, target_accuracy=args.target_accuracy)
 
 
 if __name__ == "__main__":

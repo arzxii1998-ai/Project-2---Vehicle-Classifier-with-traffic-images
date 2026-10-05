@@ -6,6 +6,8 @@
   "batch_size": 32,
   "num_workers": 4,
   "with_aug": true,
+  "imbalance": null,
+  "balanced_batches": false,
   "model": {
     "model_name": "baseline_cnn",
     "in_channels": 3,
@@ -16,7 +18,7 @@
       256,
       256
     ],
-    "pool_type": "max",
+    "pool_type": "avg",
     "dropout_p": 0.0,
     "num_classes": 8
   },
@@ -29,6 +31,5 @@
   "epochs": 50,
   "monitor": "macro_f1",
   "mode": "max",
-  "patience": null,
-  "pool_type": "avg"
+  "patience": null
 }

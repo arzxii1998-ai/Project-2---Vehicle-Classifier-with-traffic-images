@@ -1,0 +1,10 @@
+{
+  "run_name": "full_ablation_bce",
+  "target_accuracy": 0.95,
+  "threshold": 0.3,
+  "coverage": 0.9870298313878081,
+  "review_rate": 0.01297016861219196,
+  "accuracy_accepted": 0.9526938239159002,
+  "error_capture_rate": 0.1,
+  "chosen_on": "validation"
+}
