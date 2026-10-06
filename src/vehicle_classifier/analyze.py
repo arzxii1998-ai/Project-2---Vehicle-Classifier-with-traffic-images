@@ -286,7 +286,7 @@ def plot_confusion_matrices(cm, cm_normalized, class_names, save_path):
     _save_figure(fig, save_path)
 
 
-def plot_per_class_metrics(metrics, save_path):
+def plot_per_class_metrics(metrics, save_path, title="Per-class metrics (validation)"):
     """Grouped bars of precision, recall and F1 for every class."""
     table = metrics_to_dataframe(metrics).drop(index="macro avg")
     x = np.arange(len(table))
@@ -313,13 +313,15 @@ def plot_per_class_metrics(metrics, save_path):
         [f"{name}\n(n={int(n)})" for name, n in zip(table.index, table["support"])]
     )
     ax.set_ylim(0, 1.05)
-    _style_axes(ax, "Per-class metrics (validation)", ylabel="score")
+    _style_axes(ax, title, ylabel="score")
     ax.legend(frameon=False, ncol=4, loc="lower center")
 
     _save_figure(fig, save_path)
 
 
-def plot_misclassified(errors, save_path, ncols=4):
+def plot_misclassified(
+    errors, save_path, ncols=4, title="Most confident mistakes (validation)"
+):
     """Show the original images of the most confident mistakes."""
     n = len(errors)
     nrows = (n + ncols - 1) // ncols
@@ -347,8 +349,7 @@ def plot_misclassified(errors, save_path, ncols=4):
             fontsize=9,
             color=PLOT_PALETTE[5],
         )
-
-    fig.suptitle("Most confident mistakes (validation)", fontsize=13, fontweight="bold")
+    fig.suptitle(title, fontsize=13, fontweight="bold")
     _save_figure(fig, save_path)
 
 

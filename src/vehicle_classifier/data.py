@@ -557,12 +557,16 @@ if __name__ == "__main__":
 
     print_section("2.loading Train and Val ...")
     print_subsection("1. Train:")
+
     train_df = load_manifest("train")
+
     print(train_df.head())
     print("All paths exist:", train_df["path"].map(lambda p: p.exists()).all())
 
     print_subsection("2. Val")
+
     val_df = load_manifest("val")
+
     print(val_df.head())
     print("All paths exist:", val_df["path"].map(lambda p: p.exists()).all())
 
@@ -626,6 +630,7 @@ if __name__ == "__main__":
     print_section("6. Transform Testing ... ")
 
     train_tf, val_tf = build_transform(mean, std, image_size=IMAGE_SIZE, with_aug=True)
+
     print("train_tf:\n", train_tf, sep="")
     print("val_tf:\n", val_tf, sep="")
 

@@ -346,6 +346,7 @@ def selective_metrics(y_true, y_pred, confidence, threshold):
         "error_capture_rate": (
             int((~correct & needs_review).sum()) / num_errors if num_errors else None
         ),
+        "num_errors": num_errors,
     }
 
 
