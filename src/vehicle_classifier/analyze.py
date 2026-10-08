@@ -600,10 +600,10 @@ def main():
         # "imbalanced_standard",
         # "step_lr",
         # "step_lr_&_aug_50epoch",
-        "resnet18_frozen",
-        "resnet18_finetune",
-        "resnet18_full",
-        "resnet18_full_bce",
+        # "resnet18_frozen",
+        # "resnet18_finetune",
+        # "resnet18_full",
+        # "resnet18_full_bce",
     ]
 
     for name in DEFAULT_RUN_NAME_list:

@@ -1,7 +1,7 @@
 {
   "run_name": "resnet18_full_bce",
   "checkpoint": "D:\\BootCamp Sharif AI\\Project 2 - Vehicle Classifier with traffic images\\outputs\\runs\\resnet18_full_bce\\best.pt",
-  "evaluated_at": "2026-10-06T04:41:16.845088+03:30",
+  "evaluated_at": "2026-10-06T17:34:55.388348+03:30",
   "loss_type": "bce",
   "seed": 42,
   "image_size": [

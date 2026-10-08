@@ -1,0 +1,22 @@
+﻿run_name,output_root,overwrite,seed,batch_size,num_workers,with_aug,loss_type,optimizer,lr,weight_decay,scheduler,epochs,monitor,mode,patience,model_model_name,model_in_channels,model_channels,model_pool_type,model_dropout_p,model_num_classes,imbalance,balanced_batches,imbalance_keep_fractions_ambulance,imbalance_keep_fractions_kamyun,imbalance_keep_fractions_minibus,imbalance_seed,head_lr,backbone_lr,init_checkpoint,model_mode
+aug,outputs/runs,False,42,32,4,True,ce,adamw,0.001,0.0,,30,macro_f1,max,,baseline_cnn,3.0,"[32, 64, 128, 256]",max,0.0,8,,,,,,,,,,
+baseline_cnn,outputs/runs,True,42,32,4,True,ce,adamw,0.001,0.0,,30,macro_f1,max,,baseline_cnn,3.0,"[32, 64, 128, 256]",max,0.0,8,,,,,,,,,,
+depth5,outputs/runs,False,42,32,4,True,ce,adamw,0.001,0.0,,30,macro_f1,max,,baseline_cnn,3.0,"[32, 64, 128, 256, 256]",max,0.0,8,,,,,,,,,,
+full_ablation,outputs/runs,False,42,32,4,True,ce,adamw,0.001,0.0,step,50,macro_f1,max,,baseline_cnn,3.0,"[32, 64, 128, 256, 256]",max,0.0,8,,,,,,,,,,
+full_ablation_avgpool,outputs/runs,True,42,32,4,True,ce,adamw,0.001,0.0,step,50,macro_f1,max,,baseline_cnn,3.0,"[32, 64, 128, 256, 256]",avg,0.0,8,,False,,,,,,,,
+full_ablation_bce,outputs/runs,False,42,32,4,True,bce,adamw,0.001,0.0,step,50,macro_f1,max,,baseline_cnn,3.0,"[32, 64, 128, 256, 256]",max,0.0,8,,,,,,,,,,
+full_ablation_bce_plateau_decoy,outputs/runs,False,42,32,4,True,bce,adamw,0.001,0.01,plateau,50,macro_f1,max,,baseline_cnn,3.0,"[32, 64, 128, 256, 256]",max,0.0,8,,,,,,,,,,
+full_ablation_DO.3,outputs/runs,True,42,32,4,True,ce,adamw,0.001,0.0,step,50,macro_f1,max,,baseline_cnn,3.0,"[32, 64, 128, 256, 256]",max,0.3,8,,False,,,,,,,,
+full_ablation_DO.5,outputs/runs,True,42,32,4,True,ce,adamw,0.001,0.0,step,50,macro_f1,max,,baseline_cnn,3.0,"[32, 64, 128, 256, 256]",max,0.5,8,,False,,,,,,,,
+full_ablation_plateau,outputs/runs,True,42,32,4,True,ce,adamw,0.001,0.0,plateau,50,macro_f1,max,,baseline_cnn,3.0,"[32, 64, 128, 256, 256]",max,0.0,8,,,,,,,,,,
+full_ablation_pro,outputs/runs,False,42,32,4,True,bce,adamw,0.001,0.01,plateau,50,macro_f1,max,,baseline_cnn,3.0,"[32, 64, 128, 256, 256]",max,0.3,8,,False,,,,,,,,
+full_ablation_wdecay-e-2,outputs/runs,True,42,32,4,True,ce,adamw,0.001,0.01,step,50,macro_f1,max,,baseline_cnn,3.0,"[32, 64, 128, 256, 256]",max,0.0,8,,,,,,,,,,
+full_ablation_wdecay-e-4,outputs/runs,True,42,32,4,True,ce,adamw,0.001,0.0001,step,50,macro_f1,max,,baseline_cnn,3.0,"[32, 64, 128, 256, 256]",max,0.0,8,,,,,,,,,,
+imbalanced_balanced,outputs/runs,False,42,32,4,True,ce,adamw,0.001,0.0,step,50,macro_f1,max,,baseline_cnn,3.0,"[32, 64, 128, 256, 256]",max,0.0,8,,True,0.25,0.25,0.25,42.0,,,,
+imbalanced_standard,outputs/runs,False,42,32,4,True,ce,adamw,0.001,0.0,step,50,macro_f1,max,,baseline_cnn,3.0,"[32, 64, 128, 256, 256]",max,0.0,8,,False,0.25,0.25,0.25,42.0,,,,
+resnet18_finetune,outputs/runs,False,42,32,4,True,ce,adamw,0.001,0.01,plateau,50,macro_f1,max,,resnet18,,,,0.3,8,,False,,,,,0.001,0.0001,D:\BootCamp Sharif AI\Project 2 - Vehicle Classifier with traffic images\outputs\runs\resnet18_frozen\best.pt,finetune
+resnet18_frozen,outputs/runs,False,42,32,4,True,ce,adamw,0.001,0.01,plateau,50,macro_f1,max,,resnet18,,,,0.3,8,,False,,,,,0.001,0.0001,,frozen
+resnet18_full,outputs/runs,False,42,32,4,True,ce,adamw,0.001,0.01,plateau,50,macro_f1,max,,resnet18,,,,0.3,8,,False,,,,,0.001,0.0001,,full
+resnet18_full_bce,outputs/runs,False,42,32,4,True,bce,adamw,0.001,0.01,plateau,50,macro_f1,max,,resnet18,,,,0.3,8,,False,,,,,0.001,0.0001,,full
+step_lr,outputs/runs,False,42,32,4,True,ce,adamw,0.001,0.0,step,30,macro_f1,max,,baseline_cnn,3.0,"[32, 64, 128, 256]",max,0.0,8,,,,,,,,,,
+step_lr_&_aug_50epoch,outputs/runs,False,42,32,4,True,ce,adamw,0.001,0.0,step,50,macro_f1,max,,baseline_cnn,3.0,"[32, 64, 128, 256]",max,0.0,8,,,,,,,,,,
