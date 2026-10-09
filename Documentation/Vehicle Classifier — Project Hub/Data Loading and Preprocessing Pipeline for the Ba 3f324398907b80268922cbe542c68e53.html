@@ -1,0 +1,798 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>Data Loading and Preprocessing Pipeline for the Baseline CNN</title><style>
+/* cspell:disable-file */
+/* webkit printing magic: print all background colors */
+html {
+	-webkit-print-color-adjust: exact;
+}
+* {
+	box-sizing: border-box;
+	-webkit-print-color-adjust: exact;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+}
+@media only screen {
+	body {
+		margin: 2em auto;
+		max-width: 900px;
+		color: rgb(55, 53, 47);
+	}
+}
+
+body {
+	line-height: 1.5;
+	white-space: pre-wrap;
+}
+
+a,
+a.visited {
+	color: inherit;
+	text-decoration: underline;
+}
+
+.pdf-relative-link-path {
+	font-size: 80%;
+	color: #444;
+}
+
+h1,
+h2,
+h3 {
+	letter-spacing: -0.01em;
+	line-height: 1.2;
+	font-weight: 600;
+	margin-bottom: 0;
+}
+
+/* Override strong tags inside headings to maintain consistent weight */
+h1 strong,
+h2 strong,
+h3 strong {
+	font-weight: 600;
+}
+
+.page-title {
+	font-size: 2.5rem;
+	font-weight: 700;
+	margin-top: 0;
+	margin-bottom: 0.75em;
+}
+
+h1 {
+	font-size: 1.875rem;
+	margin-top: 1.875rem;
+}
+
+h2 {
+	font-size: 1.5rem;
+	margin-top: 1.5rem;
+}
+
+h3 {
+	font-size: 1.25rem;
+	margin-top: 1.25rem;
+}
+
+.source {
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	padding: 1.5em;
+	word-break: break-all;
+}
+
+.callout {
+	border-radius: 10px;
+	padding: 1rem;
+	/* Paint a complete callout box on every PDF page fragment. */
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+}
+
+/* For default-background callouts, render the border outline. */
+.callout.block-color-default_background {
+	border: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+figure {
+	margin: 1.25em 0;
+	page-break-inside: avoid;
+}
+
+/*
+ * Toggles and callouts hold arbitrary content, so they can easily be taller
+ * than a page. They must stay breakable: avoiding breaks inside them makes
+ * Chromium push the whole block onto the next page, which leaves the previous
+ * page mostly empty before every long toggle.
+ */
+details,
+aside {
+	margin: 1.25em 0;
+}
+
+/* Keep a toggle's title on the same page as the start of its content. */
+summary {
+	page-break-after: avoid;
+	break-after: avoid;
+}
+
+/*
+ * Toggle headings render as <h1/h2/h3 style="display:inline-block"> inside
+ * <summary>. Without this reset, the heading's margin-top pushes it below the
+ * ::marker (▼), so the triangle and the title appear on separate lines.
+ */
+summary h1,
+summary h2,
+summary h3,
+summary h4 {
+	margin-top: 0;
+}
+
+figcaption {
+	opacity: 0.5;
+	font-size: 85%;
+	margin-top: 0.5em;
+}
+
+mark {
+	background-color: transparent;
+}
+
+.indented {
+	padding-left: 1.5em;
+}
+
+hr {
+	background: transparent;
+	display: block;
+	width: 100%;
+	height: 1px;
+	visibility: visible;
+	border: none;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+img {
+	max-width: 100%;
+}
+
+@media only print {
+	img {
+		max-height: 100vh;
+		object-fit: contain;
+	}
+
+	table.collection-content {
+		width: 100%;
+		table-layout: fixed;
+	}
+
+	table.collection-content th,
+	table.collection-content td {
+		overflow-wrap: anywhere;
+	}
+
+	table.collection-content td > .user,
+	table.collection-content td > time {
+		white-space: pre-wrap;
+	}
+}
+
+@page {
+	margin: 1in;
+}
+
+.collection-content-wrapper {
+	overflow-x: auto;
+}
+
+@media only print {
+	.collection-content-wrapper {
+		overflow-x: visible;
+	}
+}
+
+.collection-content {
+	font-size: 0.875rem;
+}
+
+.collection-content td {
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.column-list {
+	display: flex;
+	gap: 46px;
+}
+
+.column {
+	min-width: 0;
+	overflow: hidden;
+}
+
+.column > *:first-child {
+	margin-top: 0;
+}
+
+.table_of_contents-item {
+	display: block;
+	font-size: 0.875rem;
+	line-height: 1.3;
+	padding-inline: 0.125rem;
+	padding-block: 0.375rem;
+}
+
+.table_of_contents-indent-1 {
+	margin-left: 1.5rem;
+}
+
+.table_of_contents-indent-2 {
+	margin-left: 3rem;
+}
+
+.table_of_contents-indent-3 {
+	margin-left: 4.5rem;
+}
+
+.table_of_contents-link {
+	text-decoration: none;
+	opacity: 0.7;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.18);
+}
+
+table,
+th,
+td {
+	border: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+table {
+	border-collapse: collapse;
+	border-left: none;
+	border-right: none;
+}
+
+th,
+td {
+	font-weight: normal;
+	padding: 0.25em 0.5em;
+	line-height: 1.5;
+	min-height: 1.5em;
+	text-align: left;
+}
+
+th {
+	color: rgba(55, 53, 47, 0.6);
+}
+
+ol,
+ul {
+	margin: 0;
+	margin-block-start: 0.6em;
+	margin-block-end: 0.6em;
+}
+
+li > ol:first-child,
+li > ul:first-child {
+	margin-block-start: 0.6em;
+}
+
+ul > li {
+	list-style: disc;
+}
+
+ul.to-do-list {
+	padding-inline-start: 0;
+}
+
+ul.to-do-list > li {
+	list-style: none;
+}
+
+.to-do-children-checked {
+	text-decoration: line-through;
+	opacity: 0.375;
+}
+
+ul.toggle > li {
+	list-style: none;
+}
+
+ul {
+	padding-inline-start: 1.7em;
+}
+
+ul > li {
+	padding-left: 0.1em;
+}
+
+ol {
+	padding-inline-start: 1.6em;
+}
+
+ol.numbered-list.numbered-list-digits-2 {
+	padding-inline-start: 2em;
+}
+
+ol.numbered-list.numbered-list-digits-3plus {
+	padding-inline-start: 2.4em;
+}
+
+ol > li {
+	padding-left: 0.2em;
+}
+
+.mono ol {
+	padding-inline-start: 2em;
+}
+
+.mono ol > li {
+	text-indent: -0.4em;
+}
+
+.toggle {
+	padding-inline-start: 0em;
+	list-style-type: none;
+}
+
+/* Indent toggle children */
+.toggle > li > details {
+	padding-left: 1.7em;
+}
+
+.toggle > li > details > summary {
+	margin-left: -1.1em;
+}
+
+.selected-value {
+	display: inline-block;
+	padding: 0 0.5em;
+	background: rgba(206, 205, 202, 0.5);
+	border-radius: 3px;
+	margin-right: 0.5em;
+	margin-top: 0.3em;
+	margin-bottom: 0.3em;
+	white-space: nowrap;
+}
+
+.collection-title {
+	display: inline-block;
+	margin-right: 1em;
+}
+
+.page-description {
+	margin-bottom: 2em;
+}
+
+.simple-table {
+	margin-top: 1em;
+	font-size: 0.875rem;
+	empty-cells: show;
+}
+.simple-table td {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table th {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table-header-color {
+	background: rgb(247, 246, 243);
+	color: black;
+}
+.simple-table-header {
+	font-weight: 500;
+}
+
+time {
+	opacity: 0.5;
+}
+
+.icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	max-width: 1.2em;
+	max-height: 1.2em;
+	text-decoration: none;
+	vertical-align: text-bottom;
+	margin-right: 0.5em;
+}
+
+/*
+ * Render emoji icons using a ::before pseudo-element to keep the glyph
+ * out of the DOM textContent traversal. This avoids double-rendering icons
+ * in callouts and page titles.
+ * NOTE(slim/html-export-pseudo-icons): I can't tagref this because it will
+ * flag as a duplicate tag after codegen.
+ */
+.icon[data-emoji]::before {
+	content: attr(data-emoji);
+}
+
+img.icon {
+	border-radius: 3px;
+}
+
+.callout img.notion-static-icon {
+	width: 1em;
+	height: 1em;
+}
+
+.callout p {
+	margin: 0;
+}
+
+.callout h1,
+.callout h2,
+.callout h3 {
+	margin: 0 0 0.6rem;
+}
+
+.user-icon {
+	width: 1.5em;
+	height: 1.5em;
+	border-radius: 100%;
+	margin-right: 0.5rem;
+}
+
+.user-icon-inner {
+	font-size: 0.8em;
+}
+
+.text-icon {
+	border: 1px solid #000;
+	text-align: center;
+}
+
+.page-cover-image {
+	display: block;
+	object-fit: cover;
+	width: 100%;
+	max-height: 30vh;
+}
+
+.page-header-icon {
+	font-size: 3rem;
+	margin-bottom: 1rem;
+}
+
+.page-header-icon-with-cover {
+	margin-top: -0.72em;
+	margin-left: 0.07em;
+}
+
+.page-header-icon img {
+	border-radius: 3px;
+}
+
+.link-to-page {
+	margin: 1em 0;
+	padding: 0;
+	border: none;
+	font-weight: 500;
+}
+
+p > .user {
+	opacity: 0.5;
+}
+
+td > .user,
+td > time {
+	white-space: nowrap;
+}
+
+input[type="checkbox"] {
+	margin-right: 0.4em;
+	vertical-align: middle;
+}
+
+p {
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+}
+
+.image {
+	border: none;
+	margin: 1.5em 0;
+	padding: 0;
+	border-radius: 0;
+	text-align: center;
+}
+
+.code,
+code {
+	background: rgba(135, 131, 120, 0.15);
+	border-radius: 3px;
+	padding: 0.2em 0.4em;
+	border-radius: 3px;
+	font-size: 85%;
+	tab-size: 2;
+}
+
+code {
+	color: #eb5757;
+}
+
+.code {
+	padding: 1.5em 1em;
+}
+
+.code-wrap {
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.code > code {
+	background: none;
+	padding: 0;
+	font-size: 100%;
+	color: inherit;
+}
+
+blockquote {
+	font-size: 1em;
+	margin: 1em 0;
+	padding-left: 1em;
+	border-left: 3px solid rgb(55, 53, 47);
+}
+
+blockquote.quote-large {
+	font-size: 1.25em;
+}
+
+.bookmark {
+	text-decoration: none;
+	max-height: 8em;
+	padding: 0;
+	display: flex;
+	width: 100%;
+	align-items: stretch;
+}
+
+.bookmark-title {
+	font-size: 0.85em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	height: 1.75em;
+	white-space: nowrap;
+}
+
+.bookmark-text {
+	display: flex;
+	flex-direction: column;
+}
+
+.bookmark-info {
+	flex: 4 1 180px;
+	padding: 12px 14px 14px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+
+.bookmark-image {
+	width: 33%;
+	flex: 1 1 180px;
+	display: block;
+	position: relative;
+	object-fit: cover;
+	border-radius: 1px;
+}
+
+.bookmark-description {
+	color: rgba(55, 53, 47, 0.6);
+	font-size: 0.75em;
+	overflow: hidden;
+	max-height: 4.5em;
+	word-break: break-word;
+}
+
+.bookmark-href {
+	font-size: 0.75em;
+	margin-top: 0.25em;
+}
+
+.tab {
+	margin: 1.25em 0;
+	padding-inline: 1rem;
+	border: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+.sans { font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"; }
+.code { font-family: "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace; }
+.serif { font-family: Lyon-Text, Georgia, ui-serif, serif; }
+.mono { font-family: iawriter-mono, Nitti, Menlo, Courier, monospace; }
+.pdf .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK JP'; }
+.pdf:lang(zh-CN) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK SC'; }
+.pdf:lang(zh-TW) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK TC'; }
+.pdf:lang(ko-KR) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK KR'; }
+.pdf .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.pdf .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK JP'; }
+.pdf:lang(zh-CN) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK SC'; }
+.pdf:lang(zh-TW) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK TC'; }
+.pdf:lang(ko-KR) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK KR'; }
+.pdf .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.highlight-default {
+	color: rgba(44, 44, 43, 1);
+}
+.highlight-gray {
+	color: rgba(125, 122, 117, 1);
+	fill: rgba(125, 122, 117, 1);
+}
+.highlight-brown {
+	color: rgba(159, 118, 90, 1);
+	fill: rgba(159, 118, 90, 1);
+}
+.highlight-orange {
+	color: rgba(210, 123, 45, 1);
+	fill: rgba(210, 123, 45, 1);
+}
+.highlight-yellow {
+	color: rgba(203, 148, 52, 1);
+	fill: rgba(203, 148, 52, 1);
+}
+.highlight-teal {
+	color: rgba(80, 148, 110, 1);
+	fill: rgba(80, 148, 110, 1);
+}
+.highlight-blue {
+	color: rgba(56, 125, 201, 1);
+	fill: rgba(56, 125, 201, 1);
+}
+.highlight-purple {
+	color: rgba(154, 107, 180, 1);
+	fill: rgba(154, 107, 180, 1);
+}
+.highlight-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.highlight-red {
+	color: rgba(207, 81, 72, 1);
+	fill: rgba(207, 81, 72, 1);
+}
+.highlight-default_background {
+	color: rgba(44, 44, 43, 1);
+}
+.highlight-gray_background {
+	background: rgba(42, 28, 0, 0.07);
+}
+.highlight-brown_background {
+	background: rgba(139, 46, 0, 0.086);
+}
+.highlight-orange_background {
+	background: rgba(224, 101, 1, 0.129);
+}
+.highlight-yellow_background {
+	background: rgba(211, 168, 0, 0.137);
+}
+.highlight-teal_background {
+	background: rgba(0, 100, 45, 0.09);
+}
+.highlight-blue_background {
+	background: rgba(0, 124, 215, 0.094);
+}
+.highlight-purple_background {
+	background: rgba(102, 0, 178, 0.078);
+}
+.highlight-pink_background {
+	background: rgba(197, 0, 93, 0.086);
+}
+.highlight-red_background {
+	background: rgba(223, 22, 0, 0.094);
+}
+.block-color-default {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray {
+	color: rgba(125, 122, 117, 1);
+	fill: rgba(125, 122, 117, 1);
+}
+.block-color-brown {
+	color: rgba(159, 118, 90, 1);
+	fill: rgba(159, 118, 90, 1);
+}
+.block-color-orange {
+	color: rgba(210, 123, 45, 1);
+	fill: rgba(210, 123, 45, 1);
+}
+.block-color-yellow {
+	color: rgba(203, 148, 52, 1);
+	fill: rgba(203, 148, 52, 1);
+}
+.block-color-teal {
+	color: rgba(80, 148, 110, 1);
+	fill: rgba(80, 148, 110, 1);
+}
+.block-color-blue {
+	color: rgba(56, 125, 201, 1);
+	fill: rgba(56, 125, 201, 1);
+}
+.block-color-purple {
+	color: rgba(154, 107, 180, 1);
+	fill: rgba(154, 107, 180, 1);
+}
+.block-color-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.block-color-red {
+	color: rgba(207, 81, 72, 1);
+	fill: rgba(207, 81, 72, 1);
+}
+.block-color-default_background {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray_background {
+	background: rgba(240, 239, 237, 1);
+}
+.block-color-brown_background {
+	background: rgba(245, 237, 233, 1);
+}
+.block-color-orange_background {
+	background: rgba(251, 235, 222, 1);
+}
+.block-color-yellow_background {
+	background: rgba(249, 243, 220, 1);
+}
+.block-color-teal_background {
+	background: rgba(232, 241, 236, 1);
+}
+.block-color-blue_background {
+	background: rgba(229, 242, 252, 1);
+}
+.block-color-purple_background {
+	background: rgba(243, 235, 249, 1);
+}
+.block-color-pink_background {
+	background: rgba(250, 233, 241, 1);
+}
+.block-color-red_background {
+	background: rgba(252, 233, 231, 1);
+}
+.select-value-color-default { background-color: rgba(42, 28, 0, 0.07); }
+.select-value-color-gray { background-color: rgba(28, 19, 1, 0.11); }
+.select-value-color-brown { background-color: rgba(127, 51, 0, 0.156); }
+.select-value-color-orange { background-color: rgba(196, 88, 0, 0.203); }
+.select-value-color-yellow { background-color: rgba(209, 156, 0, 0.282); }
+.select-value-color-green { background-color: rgba(0, 96, 38, 0.156); }
+.select-value-color-blue { background-color: rgba(0, 118, 217, 0.203); }
+.select-value-color-purple { background-color: rgba(92, 0, 163, 0.141); }
+.select-value-color-pink { background-color: rgba(183, 0, 78, 0.152); }
+.select-value-color-red { background-color: rgba(206, 24, 0, 0.164); }
+
+.checkbox {
+	display: inline-flex;
+	vertical-align: text-bottom;
+	width: 16;
+	height: 16;
+	background-size: 16px;
+	margin-left: 2px;
+	margin-right: 5px;
+}
+
+.checkbox-on {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%2358A9D7%22%2F%3E%0A%3Cpath%20d%3D%22M6.71429%2012.2852L14%204.9995L12.7143%203.71436L6.71429%209.71378L3.28571%206.2831L2%207.57092L6.71429%2012.2852Z%22%20fill%3D%22white%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+
+.checkbox-off {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2214.5%22%20height%3D%2214.5%22%20fill%3D%22white%22%20stroke%3D%22%2336352F%22%20stroke-width%3D%221.5%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+	
+</style><style>@import url('https://cdn.jsdelivr.net/npm/katex@0.16.25/dist/katex-swap.min.css')</style></head><body><article id="3f324398-907b-8026-8922-cbe542c68e53" class="page sans"><header><h1 class="page-title" dir="auto">Data Loading and Preprocessing Pipeline for the Baseline CNN</h1><p class="page-description" dir="auto"></p></header><div class="page-body"><p id="3f324398-907b-8099-86a9-e6f76911202a" class="" dir="auto"><strong>Module:</strong> <code>src/vehicle_classifier/data.py</code></p><p id="3f324398-907b-80a4-acc8-e09a0a549ec4" class="" dir="auto"><strong>Inputs from Goal 1:</strong> <code>data/train_val_split_Manifest.csv</code>, <code>configs/split_config.json</code></p><p id="3f324398-907b-80f8-b405-fe1e4901aa70" class="" dir="auto"><strong>Status:</strong> implemented and verified (see Section 6)</p><h2 id="3f324398-907b-8039-bbd0-ed19ab75d2c4" class="" dir="auto">1. Link to the Central Question</h2><blockquote id="3f324398-907b-8051-a8de-f20aac1a08d7" class="" dir="auto">Can we build a reliable system that classifies vehicles from traffic-camera images, explains its failures, and recommends human review for uncertain predictions?</blockquote><p id="3f324398-907b-8068-b244-f1a90f20e27e" class="" dir="auto">This stage supports the &quot;reliable&quot; and &quot;reproducible&quot; parts of the question. Every model in the project (baseline CNN, balanced-batch variants, ResNet18 transfer learning) receives its images through one documented, seeded, leakage-free pipeline. Differences between experiments then come from the factor under test, not from the input pipeline.</p><h2 id="3f324398-907b-805d-b827-fcc71bd43493" class="" dir="auto">2. Goal and tasks</h2><p id="3f324398-907b-80bc-b1b2-ff540891229f" class="" dir="auto"><strong>Goal 2A.</strong> Turn the train/validation manifest into batches of normalized image tensors of shape <code>[B, 3, 288, 224]</code> with integer labels of shape <code>[B]</code>, using one preprocessing definition shared by all models, with no train/validation/test leakage and fully reproducible randomness.</p><table id="3f324398-907b-80fb-baf4-d25464f3bd67" class="simple-table" dir="ltr"><thead class="simple-table-header"><tr id="3f324398-907b-803e-8ec6-c72ea8235919" dir="ltr"><th id="&gt;dMn" class="simple-table-header-color simple-table-header">\#</th><th id="&lt;?V|" class="simple-table-header-color simple-table-header">Task</th><th id="&gt;GTp" class="simple-table-header-color simple-table-header">Implementation</th><th id="MT:L" class="simple-table-header-color simple-table-header">Status</th></tr></thead><tbody><tr id="3f324398-907b-80f9-b145-e28144501dfd" dir="ltr"><td id="&gt;dMn" class="">T1</td><td id="&lt;?V|" class="">Read train/val from the manifest and map classes to indices with one fixed mapping</td><td id="&gt;GTp" class="">get\_class\_mapping, load\_manifest</td><td id="MT:L" class="">Done</td></tr><tr id="3f324398-907b-803d-bc15-c203d0403200" dir="ltr"><td id="&gt;dMn" class="">T2</td><td id="&lt;?V|" class="">Serve images and labels to PyTorch</td><td id="&gt;GTp" class="">ManifestDataset</td><td id="MT:L" class="">Done</td></tr><tr id="3f324398-907b-80ba-819f-eeedb83f0e4f" dir="ltr"><td id="&gt;dMn" class="">T3</td><td id="&lt;?V|" class="">Choose one fixed input size, derived from the data</td><td id="&gt;GTp" class="">IMAGE\_SIZE = \(288, 224\)</td><td id="MT:L" class="">Done</td></tr><tr id="3f324398-907b-8028-92c3-edb696cbe5b9" dir="ltr"><td id="&gt;dMn" class="">T4</td><td id="&lt;?V|" class="">Resize without distorting vehicles</td><td id="&gt;GTp" class="">LetterboxResize</td><td id="MT:L" class="">Done</td></tr><tr id="3f324398-907b-8042-8bc0-ee403fe559aa" dir="ltr"><td id="&gt;dMn" class="">T5</td><td id="&lt;?V|" class="">Normalize with statistics from the training split only</td><td id="&gt;GTp" class="">compute\_mean\_std, load\_or\_compute\_norm\_stats</td><td id="MT:L" class="">Done</td></tr><tr id="3f324398-907b-8096-9905-cf4c67aa7ba0" dir="ltr"><td id="&gt;dMn" class="">T6</td><td id="&lt;?V|" class="">Build train/eval transforms; augmentation on train only and switchable</td><td id="&gt;GTp" class="">build\_transform, denormalize</td><td id="MT:L" class="">Done</td></tr><tr id="3f324398-907b-8027-b9f2-f771382976bb" dir="ltr"><td id="&gt;dMn" class="">T7</td><td id="&lt;?V|" class="">Build reproducible DataLoaders</td><td id="&gt;GTp" class="">set\_seed, seed\_worker, get\_dataloaders</td><td id="MT:L" class="">Done</td></tr><tr id="3f324398-907b-80cd-8506-c51b016a3e07" dir="ltr"><td id="&gt;dMn" class="">T8</td><td id="&lt;?V|" class="">Verify visually and measure loading speed</td><td id="&gt;GTp" class="">show\_samples, time\_epochs</td><td id="MT:L" class="">Done</td></tr></tbody></table><h2 id="3f324398-907b-8031-bdff-d72ad6b43201" class="" dir="auto">3. Inputs</h2><table id="3f324398-907b-8013-8882-d381411c4902" class="simple-table" dir="ltr"><thead class="simple-table-header"><tr id="3f324398-907b-808e-b055-f9f22380a115" dir="ltr"><th id="hQyO" class="simple-table-header-color simple-table-header">Item</th><th id="xwO^" class="simple-table-header-color simple-table-header">Value</th></tr></thead><tbody><tr id="3f324398-907b-805b-8f90-d05def85cf0b" dir="ltr"><td id="hQyO" class="">Manifest</td><td id="xwO^" class="">data/train\_val\_split\_Manifest\.csv with columns path, class, filename, group\_id, split</td></tr><tr id="3f324398-907b-8089-92a5-cea2f59eb404" dir="ltr"><td id="hQyO" class="">Splits read in this stage</td><td id="xwO^" class="">train, val \(the test set is deliberately not read, see 4\.7\)</td></tr><tr id="3f324398-907b-80c0-8c8b-fa0aa7c6c9c1" dir="ltr"><td id="hQyO" class="">Classes \(8\)</td><td id="xwO^" class="">ambulance, autobus, kamyun, kamyunet, minibus, savari, taxi, vanet</td></tr><tr id="3f324398-907b-80d1-9a92-e3b1d1d477d1" dir="ltr"><td id="hQyO" class="">Origin of the split</td><td id="xwO^" class="">Goal 1: StratifiedGroupKFold \(5 folds, 80/20, seed 42\), groups = perceptual\-hash duplicate clusters \(threshold 0\.82\)</td></tr></tbody></table><p id="3f324398-907b-80aa-a305-c7082233b9f1" class="" dir="auto"><strong>Dataset snapshot (fill from the script output):</strong></p><table id="3f324398-907b-8074-9e4e-dbdc87c26453" class="simple-table" dir="ltr"><thead class="simple-table-header"><tr id="3f324398-907b-806a-9ea5-d41977a8b757" dir="ltr"><th id="c;[n" class="simple-table-header-color simple-table-header">Column 1</th><th id="axBQ" class="simple-table-header-color simple-table-header">Images</th></tr></thead><tbody><tr id="3f324398-907b-80eb-a546-fc58748d15a5" dir="ltr"><td id="c;[n" class="">Train</td><td id="axBQ" class="">~۳٬۱۰۰</td></tr><tr id="3f324398-907b-80df-b916-e08fef92ba39" dir="ltr"><td id="c;[n" class="">Validation</td><td id="axBQ" class="">~۷۸۰</td></tr></tbody></table><h2 id="3f324398-907b-8048-a93c-c4bc3e34ecbc" class="" dir="auto">4. Design decisions</h2><h3 id="3f324398-907b-80ba-a7fc-e907e0c7e33a" class="" dir="auto">4.1 Manifest-based Dataset instead of <code>ImageFolder</code></h3><p id="3f324398-907b-806c-b841-c146553c3a62" class="" dir="auto">The train/validation split lives in the manifest (with <code>group_id</code>), not in folders. A custom <code>ManifestDataset(df, transform)</code> reads rows of the manifest, opens each image on demand, converts it to RGB (so grayscale or RGBA files cannot break the first convolution), applies the injected transform, and returns <code>(image, label)</code>. Passing the transform from outside lets one class serve both the train (augmented) and validation (deterministic) sides.</p><h3 id="3f324398-907b-80db-b9c0-e8aeb40c006b" class="" dir="auto">4.2 One fixed class mapping</h3><p id="3f324398-907b-8030-8b21-de394fc1e45c" class="" dir="auto"><code>CLASS_NAMES</code> is a fixed, sorted list; indices come from <code>enumerate</code>. <code>load_manifest</code> raises an error for any class outside the list, so a label can never silently become <code>NaN</code>, and the same mapping is reused for validation and, later, for the test set.</p><h3 id="3f324398-907b-806e-9f09-fd8d3aec8e01" class="" dir="auto">4.3 Input size 288 x 224 (height x width)</h3><ul id="3f324398-907b-8030-9ebf-c66d7824adae" class="bulleted-list" dir="auto"><li style="list-style-type:disc">Measured on the dataset: median aspect ratio (W/H) = 0.784 and median equivalent side <code>median(sqrt(W*H))</code> is about 259 px, giving a target of 229 x 292 (W x H).</li></ul><ul id="3f324398-907b-804a-a885-cb3a01fd9c3a" class="bulleted-list" dir="auto"><li style="list-style-type:disc">Rounded to multiples of 32 (ResNet18 reduces spatial size by a factor of 32): 224 x 288 (W x H), aspect ratio 0.778. In code this is <code>IMAGE_SIZE = (288, 224)</code> as (height, width).</li></ul><ul id="3f324398-907b-808b-abcc-db537a7a8b22" class="bulleted-list" dir="auto"><li style="list-style-type:disc">Alternatives rejected: 128 x 128 would discard about three quarters of the pixels of a typical image; a square frame would stretch the typical (0.784) image by about 28%.</li></ul><ul id="3f324398-907b-80d3-956b-dd069df87f75" class="bulleted-list" dir="auto"><li style="list-style-type:disc">The same size is used for all models, so the baseline and the ResNet comparison differ only in architecture and pretraining.</li></ul><ul id="3f324398-907b-8067-a772-d75f781d8f2c" class="bulleted-list" dir="auto"><li style="list-style-type:disc">Note for implementers: torchvision expects (height, width) while Pillow expects (width, height). The conversion happens explicitly where Pillow is called.</li></ul><h3 id="3f324398-907b-804e-a596-e40c067c156d" class="" dir="auto">4.4 Letterbox resizing (aspect-preserving resize + padding)</h3><ul id="3f324398-907b-80ee-9a18-e63713d912b4" class="bulleted-list" dir="auto"><li style="list-style-type:disc"><code>LetterboxResize</code> uses <code>ImageOps.pad</code> (bicubic, centered). No cropping, because many images are tight crops where the vehicle fills the frame.</li></ul><ul id="3f324398-907b-8026-913f-ee797f70c9f2" class="bulleted-list" dir="auto"><li style="list-style-type:disc">Padding colour is the dataset mean colour, <code>(117, 119, 122)</code>, so padding is about 0 after normalization and neutral for the network.</li></ul><ul id="3f324398-907b-80d7-972c-c7ac963b1a02" class="bulleted-list" dir="auto"><li style="list-style-type:disc">Existing white borders in some images are left untouched (white ambulances make automatic trimming risky).</li></ul><ul id="3f324398-907b-80b1-898e-c545015edc5d" class="bulleted-list" dir="auto"><li style="list-style-type:disc">Trade-off: very wide images leave a large part of the frame empty. For example, a 357 x 241 image (ratio 1.48) becomes 224 x 151 content inside a 288-pixel-high frame, so about 48% of the frame is padding.</li></ul><h3 id="3f324398-907b-8096-9fea-f0397c3d9b0a" class="" dir="auto">4.5 Normalization from the training split</h3><ul id="3f324398-907b-80f9-859c-fa517a7803c8" class="bulleted-list" dir="auto"><li style="list-style-type:disc">Per-channel mean/std are computed on the training split only, on image content only (after the aspect-preserving resize, before padding). This avoids a circular dependency, because the padding colour is derived from the mean.</li></ul><ul id="3f324398-907b-8034-a4f3-d6ee8fd4d5b8" class="bulleted-list" dir="auto"><li style="list-style-type:disc">Computation: single pass, float64 accumulators, pixel-count weighting, <code>std = sqrt(E[x^2] - E[x]^2)</code>, scale 0-1.</li></ul><ul id="3f324398-907b-80cb-9897-fc542b1303cb" class="bulleted-list" dir="auto"><li style="list-style-type:disc">Result: mean <code>[0.457, 0.4675, 0.4781]</code>, std <code>[0.2596, 0.2522, 0.2492]</code>.</li></ul><ul id="3f324398-907b-8034-94c1-e2fa7ceda06c" class="bulleted-list" dir="auto"><li style="list-style-type:disc">Cached in <code>data/train_norm_stats.json</code> together with an MD5 fingerprint of the train file list and the image size. The cache is recomputed if the split changes, the size changes, or the file is corrupted.</li></ul><ul id="3f324398-907b-80ee-b87e-e99e718e40fc" class="bulleted-list" dir="auto"><li style="list-style-type:disc">The ImageNet statistics will be used for the pretrained ResNet, because its weights expect them.</li></ul><h3 id="3f324398-907b-80bf-bb83-c7e54480f437" class="" dir="auto">4.6 Augmentation (train only, off by default for the baseline)</h3><p id="3f324398-907b-80f7-9842-f2d0aae51ebb" class="" dir="auto">Applied after the letterbox, on the fixed-size canvas, with the padding colour as fill value.</p><table id="3f324398-907b-8042-a71d-d50016ebcbf4" class="simple-table" dir="ltr"><thead class="simple-table-header"><tr id="3f324398-907b-803d-b8a4-c7b4d490847a" dir="ltr"><th id="ASI\" class="simple-table-header-color simple-table-header">Transform</th><th id="nAbr" class="simple-table-header-color simple-table-header">Parameters</th><th id="hk^l" class="simple-table-header-color simple-table-header">Reason</th></tr></thead><tbody><tr id="3f324398-907b-80d1-885b-e00508900295" dir="ltr"><td id="ASI\" class="">RandomHorizontalFlip</td><td id="nAbr" class="">p = 0\.5</td><td id="hk^l" class="">travel direction should not define the class</td></tr><tr id="3f324398-907b-80ad-9512-d4778cd67ae3" dir="ltr"><td id="ASI\" class="">RandomAffine</td><td id="nAbr" class="">degrees = 10, translate = \(0\.08, 0\.08\), scale = \(0\.8, 1\.2\), bilinear, fill = padding colour</td><td id="hk^l" class="">small rotation, shift and zoom \(in and out\) in one resampling step</td></tr><tr id="3f324398-907b-800c-a77b-c4b4e51a5b7a" dir="ltr"><td id="ASI\" class="">ColorJitter</td><td id="nAbr" class="">brightness 0\.25, contrast 0\.25, saturation 0\.15, hue 0\.03</td><td id="hk^l" class="">lighting and camera variation; hue kept very small \(about \+/\- 11 degrees\)</td></tr></tbody></table><p id="3f324398-907b-8078-abda-de3724bcaec8" class="" dir="auto">Excluded on purpose:</p><ul id="3f324398-907b-8015-8032-e2c0422fed93" class="bulleted-list" dir="auto"><li style="list-style-type:disc"><code>RandomGrayscale</code>: taxi colour (yellow/green) is the key cue.</li></ul><ul id="3f324398-907b-8016-b875-d12d7bd7afd8" class="bulleted-list" dir="auto"><li style="list-style-type:disc"><code>RandomVerticalFlip</code>: upside-down vehicles do not occur.</li></ul><ul id="3f324398-907b-806e-aa49-de45f077d835" class="bulleted-list" dir="auto"><li style="list-style-type:disc"><code>RandomResizedCrop</code>: replaced by <code>RandomAffine</code>. After the letterbox it can only zoom in (cutting parts of tightly cropped vehicles) and adds a second resampling.</li></ul><ul id="3f324398-907b-80c9-858e-dcfd6c61df81" class="bulleted-list" dir="auto"><li style="list-style-type:disc"><code>GaussianBlur</code>: deferred; most images are sharp.</li></ul><h3 id="3f324398-907b-8083-83d6-fffa4b1db0aa" class="" dir="auto">4.7 DataLoaders and reproducibility</h3><ul id="3f324398-907b-80a5-96d3-ef3dce155c11" class="bulleted-list" dir="auto"><li style="list-style-type:disc"><code>batch_size = 32</code> (divisible by the 8 classes, so a balanced batch will hold 4 images per class).</li></ul><ul id="3f324398-907b-800b-901b-cb1e98e4ad90" class="bulleted-list" dir="auto"><li style="list-style-type:disc">Train: <code>shuffle=True</code> with a dedicated <code>torch.Generator</code> seeded from the run seed. Validation: no shuffling, so metrics are comparable and predictions map back to <code>val_loader.dataset.paths[i]</code>.</li></ul><ul id="3f324398-907b-807a-a8c0-fb2ddeb8f581" class="bulleted-list" dir="auto"><li style="list-style-type:disc"><code>set_seed</code> seeds Python <code>random</code>, NumPy and torch (CPU and CUDA) and sets cuDNN to deterministic mode (benchmark off). <code>seed_worker</code> seeds NumPy and <code>random</code> inside each worker process.</li></ul><ul id="3f324398-907b-803c-b52e-e77890d75382" class="bulleted-list" dir="auto"><li style="list-style-type:disc"><code>get_dataloaders</code> returns only train and validation loaders. The test loader will be built separately at the final evaluation, so the test set cannot be touched by accident during experiments.</li></ul><ul id="3f324398-907b-803d-ad84-d1d9274fc784" class="bulleted-list" dir="auto"><li style="list-style-type:disc"><code>num_workers = 4</code> for real training runs and <code>0</code> for quick debug runs (see 6.2).</li></ul><h2 id="3f324398-907b-801c-abd4-c9adc69c3983" class="" dir="auto">5. Pipeline overview</h2><script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" integrity="sha512-7Z9J3l1+EYfeaPKcGXu3MS/7T+w19WtKQY/n+xzmw4hZhJ9tyYmcUS+4QqAlzhicE5LAfMQSF3iFTK9bQdTxXg==" crossorigin="anonymous" referrerPolicy="no-referrer"></script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" integrity="sha512-tN7Ec6zAFaVSG3TpNAKtk4DOHNpSwKHxxrsiw4GHKESGPs5njn/0sMCUMl2svV4wo4BK/rCP7juYz+zx+l6oeQ==" crossorigin="anonymous" referrerPolicy="no-referrer"/><script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-jsx.min.js" integrity="sha512-m3JYEI6gx5fh9jF10FjGoMzVKcV2N6nchcDcqPCdI1L3R2WQV7br2XVNR8iTLb2daOMRl3zldbcfT40xU2ntVw==" crossorigin="anonymous" referrerPolicy="no-referrer"></script><pre id="3f324398-907b-8039-a13d-fc06a567de22" class="code code-wrap" data-notion-code-syntax="jsx"><code class="language-jsx" style="white-space:pre-wrap;word-break:break-all">train: LetterboxResize -&gt; [RandomHorizontalFlip -&gt; RandomAffine -&gt; ColorJitter] -&gt; ToImage -&gt; ToDtype(float32, scale) -&gt; Normalize
+eval : LetterboxResize -&gt;                                                         ToImage -&gt; ToDtype(float32, scale) -&gt; Normalize</code></pre><p id="3f324398-907b-8080-94db-f36ecdfeb15a" class="" dir="auto">The bracketed block is included only when <code>with_aug=True</code>. The baseline starts with <code>with_aug=False</code>, which makes &quot;no augmentation vs. augmentation&quot; a clean one-factor ablation. </p><table id="3f324398-907b-8079-b5c9-fa12d8623f66" class="simple-table" dir="ltr"><thead class="simple-table-header"><tr id="3f324398-907b-805e-a301-e2cea734060f" dir="ltr"><th id="[EIv" class="simple-table-header-color simple-table-header">Function / class</th><th id="vUHp" class="simple-table-header-color simple-table-header">Role</th></tr></thead><tbody><tr id="3f324398-907b-8060-a061-cd7646c45530" dir="ltr"><td id="[EIv" class="">get\_class\_mapping\(\)</td><td id="vUHp" class="">fixed class &lt;\-&gt; index mapping</td></tr><tr id="3f324398-907b-8045-99ae-c58032d5ba80" dir="ltr"><td id="[EIv" class="">load\_manifest\(split\)</td><td id="vUHp" class="">read manifest, filter split, validate classes, add label, resolve absolute paths</td></tr><tr id="3f324398-907b-80c5-913b-c8cd1a928bdf" dir="ltr"><td id="[EIv" class="">ManifestDataset</td><td id="vUHp" class="">\(image, label\) access for one split</td></tr><tr id="3f324398-907b-8007-9e19-dd446ade968e" dir="ltr"><td id="[EIv" class="">compute\_mean\_std, load\_or\_compute\_norm\_stats</td><td id="vUHp" class="">train\-only statistics with validated JSON cache</td></tr><tr id="3f324398-907b-8002-b1fa-dc99e696be03" dir="ltr"><td id="[EIv" class="">LetterboxResize</td><td id="vUHp" class="">aspect\-preserving resize \+ mean\-colour padding</td></tr><tr id="3f324398-907b-8013-8fce-ffaf43b4b241" dir="ltr"><td id="[EIv" class="">build\_transform\(mean, std, image\_size, with\_aug\)</td><td id="vUHp" class="">returns \(train\_transform, eval\_transform\)</td></tr><tr id="3f324398-907b-806b-9160-d4ea61282bed" dir="ltr"><td id="[EIv" class="">denormalize</td><td id="vUHp" class="">undo normalization for display</td></tr><tr id="3f324398-907b-808c-a6fc-e83db70e417c" dir="ltr"><td id="[EIv" class="">set\_seed, seed\_worker</td><td id="vUHp" class="">reproducible randomness</td></tr><tr id="3f324398-907b-80f9-a60e-e53dd21f621f" dir="ltr"><td id="[EIv" class="">get\_dataloaders\(\.\.\.\)</td><td id="vUHp" class="">returns \(train\_loader, val\_loader\)</td></tr><tr id="3f324398-907b-803a-b48a-c57b85f28354" dir="ltr"><td id="[EIv" class="">show\_samples, time\_epochs</td><td id="vUHp" class="">visual check and loader timing</td></tr></tbody></table><h2 id="3f324398-907b-8002-b4b0-f42c8b6052a1" class="" dir="auto">6. Verification</h2><p id="3f324398-907b-804b-8fa4-e0ebf8edaf79" class="" dir="auto">Running <code>python src/vehicle_classifier/data.py</code> executes all checks and writes images to <code>outputs/debug/</code>.</p><h3 id="3f324398-907b-8078-a8d7-dc05f07c3b72" class="" dir="auto">6.1 Checks</h3><table id="3f324398-907b-8024-953d-ed46457e802d" class="simple-table" dir="ltr"><thead class="simple-table-header"><tr id="3f324398-907b-8051-a41f-d045f3e38c6b" dir="ltr"><th id="ef||" class="simple-table-header-color simple-table-header">Check</th><th id="\&lt;MI" class="simple-table-header-color simple-table-header">Result</th></tr></thead><tbody><tr id="3f324398-907b-80fa-9ff0-e8446b3a9106" dir="ltr"><td id="ef||" class="">Letterbox output size</td><td id="\&lt;MI" class="">exactly 224 x 288 \(W x H\) for the widest and tallest training images; example 357 x 241 \-&gt; 224 x 288</td></tr><tr id="3f324398-907b-8035-8159-cb27eafbe5e1" dir="ltr"><td id="ef||" class="">Padding colour</td><td id="\&lt;MI" class="">LetterboxResize\(size=\(288, 224\), fill=\(117, 119, 122\)\)</td></tr><tr id="3f324398-907b-801a-99dd-db0fb6e39746" dir="ltr"><td id="ef||" class="">Transform output</td><td id="\&lt;MI" class="">tensor \(3, 288, 224\), float32; augmentation grid inspected visually \(colours preserved, mild geometry changes, padding stays mid\-grey\)</td></tr><tr id="3f324398-907b-8099-8b27-d81927642f0e" dir="ltr"><td id="ef||" class="">DataLoader batch</td><td id="\&lt;MI" class="">images \(32, 3, 288, 224\) float32, labels \(32,\) int64</td></tr><tr id="3f324398-907b-8033-9229-fd2f0a44334c" dir="ltr"><td id="ef||" class="">Reproducibility</td><td id="\&lt;MI" class="">same seed \-&gt; identical batch \(True\); different seed \-&gt; different batch \(False\)</td></tr><tr id="3f324398-907b-8085-ba25-cc82951d1004" dir="ltr"><td id="ef||" class="">Label alignment</td><td id="\&lt;MI" class="">a 12\-image labelled grid from a training batch was inspected; every title matches the vehicle</td></tr><tr id="3f324398-907b-80d2-bd17-c4243887505a" dir="ltr"><td id="ef||" class="">Batches per epoch</td><td id="\&lt;MI" class="">97 \(train\), 25 \(validation\) at batch size 32</td></tr><tr id="3f324398-907b-80c4-bd35-e3b4325c6318" dir="ltr"><td id="ef||" class="">Class mix in a random batch</td><td id="\&lt;MI" class="">\[4, 6, 1, 4, 1, 6, 4, 6\]: ordinary batches are not class\-balanced, which motivates the later BalancedBatchSampler experiment</td></tr></tbody></table><h3 id="3f324398-907b-8027-860a-c8de265b817d" class="" dir="auto">6.2 Loading speed (train loader with augmentation, batch 32, 20 logical cores, Windows)</h3><table id="3f324398-907b-803a-87de-d96a9d0459f4" class="simple-table" dir="ltr"><thead class="simple-table-header"><tr id="3f324398-907b-80e9-b4b6-c27265e30e0b" dir="ltr"><th id="WADf" class="simple-table-header-color simple-table-header">num\_workers</th><th id="k]@;" class="simple-table-header-color simple-table-header">Epoch 1</th><th id="FGXD" class="simple-table-header-color simple-table-header">Epoch 2 \(steady state\)</th><th id="mu@j" class="simple-table-header-color simple-table-header">Speed\-up</th><th id="k{rm" class="simple-table-header-color simple-table-header">Start\-up cost</th></tr></thead><tbody><tr id="3f324398-907b-80a9-b6a7-ee536694ddb6" dir="ltr"><td id="WADf" class="">0</td><td id="k]@;" class="">19\.6 s</td><td id="FGXD" class="">20\.7 s</td><td id="mu@j" class="">1x</td><td id="k{rm" class="">none</td></tr><tr id="3f324398-907b-80ac-9d6d-f6d1d6ca8b55" dir="ltr"><td id="WADf" class="">2</td><td id="k]@;" class="">14\.7 s</td><td id="FGXD" class="">10\.2 s</td><td id="mu@j" class="">about 2x</td><td id="k{rm" class="">about 4\.5 s</td></tr><tr id="3f324398-907b-8073-b110-e6a147d35cf3" dir="ltr"><td id="WADf" class="">4</td><td id="k]@;" class="">14\.9 s</td><td id="FGXD" class="">5\.6 s</td><td id="mu@j" class="">about 3\.6x</td><td id="k{rm" class="">about 9 s</td></tr></tbody></table><p id="3f324398-907b-804c-b090-f5a06c219c76" class="" dir="auto">Conclusion: loading is CPU-bound and scales almost linearly up to 4 workers; start-up costs about 2.3 s per worker (Windows process spawn), paid once per loader thanks to <code>persistent_workers</code>. Default: 4 workers for real runs, 0 for short debug runs. This benchmark measures loading only; the value will be re-checked against GPU utilisation once training exists.</p><h2 id="3f324398-907b-801a-be58-d4e20b9bcccd" class="" dir="auto">7. Leakage and reproducibility controls</h2><table id="3f324398-907b-8082-a154-fbaadf8e3f5c" class="simple-table" dir="ltr"><thead class="simple-table-header"><tr id="3f324398-907b-8001-97a3-f2e1c8356bb1" dir="ltr"><th id="b&lt;_n" class="simple-table-header-color simple-table-header">Risk</th><th id="J_SW" class="simple-table-header-color simple-table-header">Control</th></tr></thead><tbody><tr id="3f324398-907b-807c-952b-f38845ec18eb" dir="ltr"><td id="b&lt;_n" class="">Near\-duplicate images across train and validation</td><td id="J_SW" class="">group\-aware split from Goal 1; validate\_split asserts no shared path or group\_id</td></tr><tr id="3f324398-907b-80aa-8832-d5037efdf8e4" dir="ltr"><td id="b&lt;_n" class="">Statistics leaking validation/test information</td><td id="J_SW" class="">mean/std computed from the train split only, cache invalidated by a fingerprint of the train files</td></tr><tr id="3f324398-907b-8031-b365-ccce8fd4fa4d" dir="ltr"><td id="b&lt;_n" class="">Augmentation changing evaluation</td><td id="J_SW" class="">augmentation exists only in the train transform; the eval transform is deterministic</td></tr><tr id="3f324398-907b-8087-9564-e5b783f607eb" dir="ltr"><td id="b&lt;_n" class="">Accidental use of the test set</td><td id="J_SW" class="">no test loader is created in this module</td></tr><tr id="3f324398-907b-80d6-89a5-ff177bfb34df" dir="ltr"><td id="b&lt;_n" class="">Silent label errors</td><td id="J_SW" class="">fixed class list, unknown classes raise ValueError, visual label check</td></tr><tr id="3f324398-907b-8000-846e-e2ac3a93d7c6" dir="ltr"><td id="b&lt;_n" class="">Non\-repeatable runs</td><td id="J_SW" class="">global seed, dedicated shuffle generator, worker seeding, deterministic cuDNN; verified by the same\-seed test</td></tr></tbody></table><p id="3f324398-907b-80e7-ac41-f5c473b2ff03" class="" dir="auto">Reproducibility is guaranteed for the same seed on the same machine and software versions; very small numerical differences are possible on other GPUs or library versions.</p><h2 id="3f324398-907b-801f-9269-fb91ad852c8a" class="" dir="auto">8. Known limitations and risks</h2><ul id="3f324398-907b-8061-bf37-d17e3da9899d" class="bulleted-list" dir="auto"><li style="list-style-type:disc"><code>hue = 0.03</code> is the only augmentation that touches colour. If taxi recall drops in later experiments, set it to 0 first.</li></ul><ul id="3f324398-907b-8026-9a83-c5cc70f2e376" class="bulleted-list" dir="auto"><li style="list-style-type:disc">The letterbox keeps shape but wastes frame area on very wide or very tall images. A stretch-vs-letterbox comparison is possible as an optional experiment (it would need a resize-mode option, not implemented).</li></ul><ul id="3f324398-907b-80b9-a214-d2cd3d18fee3" class="bulleted-list" dir="auto"><li style="list-style-type:disc">The augmentation strength is a starting point and will be treated as an ablation hyperparameter; the exact values must be stored in each run&#x27;s configuration (the transform <code>repr</code> already prints them).</li></ul><ul id="3f324398-907b-805c-a81d-e5141ca4e838" class="bulleted-list" dir="auto"><li style="list-style-type:disc"><code>set_seed</code> currently lives in <code>data.py</code>; it will move to a shared module when the package imports are finalised with <code>train.py</code>.</li></ul><ul id="3f324398-907b-8051-890c-deb1c842d696" class="bulleted-list" dir="auto"><li style="list-style-type:disc">The ImageNet mean/std constants for the ResNet runs are not yet defined.</li></ul></div></article><span class="sans" style="font-size:14px;padding-top:2em"></span></body></html>
