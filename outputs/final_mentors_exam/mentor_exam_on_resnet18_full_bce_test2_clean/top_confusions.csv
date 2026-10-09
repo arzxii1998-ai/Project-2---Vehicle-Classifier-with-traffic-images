@@ -1,0 +1,11 @@
+﻿true_class,pred_class,count,share_of_true_class
+kamyun,kamyunet,28,0.21052631578947367
+taxi,savari,4,0.02072538860103627
+vanet,savari,4,0.020202020202020204
+kamyunet,kamyun,3,0.01639344262295082
+autobus,kamyun,1,0.00684931506849315
+kamyun,vanet,1,0.007518796992481203
+savari,ambulance,1,0.005
+savari,vanet,1,0.005
+savari,taxi,1,0.005
+taxi,minibus,1,0.0051813471502590676

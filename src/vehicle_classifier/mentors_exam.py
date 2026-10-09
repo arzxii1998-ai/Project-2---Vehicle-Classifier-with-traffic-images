@@ -76,9 +76,9 @@ from vehicle_classifier.utils import (
 # 1. Settings
 # ---------------------------------------------------------------------------
 
-TEST_DIR = PROJECT_ROOT / "dataset" / "Combined Dataset" / "test"
-OUTPUT_ROOT = PROJECT_ROOT / "outputs" / "final_test"  # NOT inside outputs/runs
-PREDICTIONS_FILE = "test_predictions.npz"
+TEST_DIR = PROJECT_ROOT / "dataset" / "TestingData" / "test4"
+OUTPUT_ROOT = PROJECT_ROOT / "outputs" / "final_mentors_exam"
+PREDICTIONS_FILE = "mentors_exam_predictions.npz"
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
 
 BATCH_SIZE = 32
@@ -90,10 +90,7 @@ GALLERY_SIZE = 12  # misclassified images shown (fewer if there are fewer mistak
 RUN_NAME_BY_HAND = (
     None  # for example "resnet18_finetune"; None = best run on validation
 )
-MANUAL_THRESHOLD = (
-    # None  # a number in [0, 1] chosen from VALIDATION; None = read the file
-    0.85
-)
+MANUAL_THRESHOLD = 0.85
 
 
 # ---------------------------------------------------------------------------
@@ -466,14 +463,13 @@ def make_report(
 
 
 # ---------------------------------------------------------------------------
-# 8. Main flow
+# 2. Main flow
 # ---------------------------------------------------------------------------
 
 
 def main():
-    print_section("FINAL TEST EVALUATION")
+    print_section("Mentors Exam Test...")
 
-    # A. Choose the model and the threshold (validation data only)
     run_name, summary = choose_best_run()
     threshold = read_validation_threshold(run_name, MANUAL_THRESHOLD)
     threshold_source = (
@@ -481,7 +477,7 @@ def main():
         if MANUAL_THRESHOLD is not None
         else "suggested_threshold.json (validation)"
     )
-    out_dir = OUTPUT_ROOT / f"test_by_{run_name}"
+    out_dir = OUTPUT_ROOT / f"mentor_exam_on_{run_name}"
 
     # B. Load the frozen model's checkpoint
     checkpoint = load_checkpoint(run_name)
@@ -502,9 +498,6 @@ def main():
         predictions, summary, checkpoint, run_name, threshold, threshold_source, out_dir
     )
     print(f"\nEverything is saved in {out_dir}")
-    print(
-        "REMINDER: no model, threshold, or decision may be changed after seeing these results."
-    )
 
 
 if __name__ == "__main__":
